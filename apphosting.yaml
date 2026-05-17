@@ -4,7 +4,7 @@ env:
   - variable: GEMINI_API_KEY
     secret: GEMINI_API_KEY
   - variable: FIREBASE_STORAGE_BUCKET
-    value: gen-lang-client-0773458973.appspot.com
+    value: gen-lang-client-0773458973.firebasestorage.app
 
 # Firebase App Hosting provides FIREBASE_CONFIG automatically at runtime.
 # The app uses FIREBASE_STORAGE_BUCKET to find the Cloud Storage bucket.
