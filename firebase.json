@@ -1,0 +1,13 @@
+{
+  "projects": {
+    "default": "gen-lang-client-0773458973"
+  },
+  "apphosting": {
+    "backends": [
+      {
+        "region": "europe-west4",
+        "name": "cinema-andreu"
+      }
+    ]
+  }
+}
