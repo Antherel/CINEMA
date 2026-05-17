@@ -56,12 +56,20 @@ export default function Page() {
 
   useEffect(() => {
     const loadProjects = async () => {
-      const response = await fetch('/api/projects');
-      const data = (await response.json()) as {projects: ProjectItem[]};
-      setProjects(data.projects);
+      try {
+        const response = await fetch('/api/projects');
+        if (!response.ok) {
+          console.error('Failed to load projects:', response.status);
+          return;
+        }
+        const data = (await response.json()) as {projects: ProjectItem[]};
+        setProjects(data.projects);
 
-      if (data.projects.length > 0) {
-        setSelectedProject((current) => current || data.projects[0].slug);
+        if (data.projects.length > 0) {
+          setSelectedProject((current) => current || data.projects[0].slug);
+        }
+      } catch (error) {
+        console.error('Error loading projects:', error);
       }
     };
 
@@ -91,23 +99,24 @@ export default function Page() {
 
     setError('');
     setMessage('Creando proyecto...');
-    const response = await fetch('/api/projects', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({projectName: nextProject}),
-    });
+    try {
+      const response = await fetch('/api/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({projectName: nextProject}),
+      });
 
-    const data = (await response.json()) as
-      | {project: ProjectItem}
-      | {error: string};
+      const data = (await response.json()) as
+        | {project: ProjectItem}
+        | {error: string};
 
-    if (!response.ok) {
-      setMessage('');
-      setError('error' in data ? data.error : 'No se pudo crear el proyecto.');
-      return;
-    }
+      if (!response.ok) {
+        setMessage('');
+        setError('error' in data ? data.error : 'No se pudo crear el proyecto.');
+        return;
+      }
 
     if (!('project' in data)) {
       setMessage('');
@@ -153,16 +162,21 @@ export default function Page() {
         body: formData,
       });
 
-      const data = (await response.json()) as
-        | {project: ProjectItem; outputs: OutputItem[]}
-        | {error: string};
-
       if (!response.ok) {
         setOutputs([]);
         setMessage('');
-        setError('error' in data ? data.error : 'No se pudo generar el lote.');
+        try {
+          const data = (await response.json()) as {error?: string};
+          setError(data.error || 'No se pudo generar el lote.');
+        } catch {
+          setError(`Error del servidor: ${response.status}`);
+        }
         return;
       }
+
+      const data = (await response.json()) as
+        | {project: ProjectItem; outputs: OutputItem[]}
+        | {error: string};
 
       if ('project' in data) {
         setProjectInfo(data.project);
