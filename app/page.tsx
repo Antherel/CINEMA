@@ -20,6 +20,16 @@ type OutputItem = {
   publicUrl: string;
 };
 
+type AssetItem = {
+  fileName: string;
+  filePath: string;
+  publicUrl: string;
+  storageMode: 'local' | 'cloud';
+  contentType: string;
+  downloadUrl: string;
+  updatedAt?: string;
+};
+
 const DEFAULT_PROMPTS = [
   {id: 'a', label: 'Toma 1', prompt: ''},
   {id: 'b', label: 'Toma 2', prompt: ''},
@@ -45,10 +55,16 @@ export default function Page() {
   const [imageSize, setImageSize] = useState('1K');
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isAssetsLoading, setIsAssetsLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [outputs, setOutputs] = useState<OutputItem[]>([]);
+  const [projectAssets, setProjectAssets] = useState<AssetItem[]>([]);
   const [projectInfo, setProjectInfo] = useState<ProjectItem | null>(null);
+
+  const currentProjectSlug = useMemo(() => {
+    return projectInfo?.slug || selectedProject || '';
+  }, [projectInfo?.slug, selectedProject]);
 
   const activeProject = useMemo(() => {
     return projects.find((project) => project.slug === selectedProject) ?? null;
@@ -81,6 +97,37 @@ export default function Page() {
       setProjectName(activeProject.displayName);
     }
   }, [activeProject, projectName]);
+
+  useEffect(() => {
+    const loadProjectAssets = async () => {
+      if (!currentProjectSlug) {
+        setProjectAssets([]);
+        return;
+      }
+
+      setIsAssetsLoading(true);
+      try {
+        const response = await fetch(
+          `/api/projects/${encodeURIComponent(currentProjectSlug)}/assets`,
+        );
+
+        if (!response.ok) {
+          setProjectAssets([]);
+          return;
+        }
+
+        const data = (await response.json()) as {assets: AssetItem[]};
+        setProjectAssets(data.assets ?? []);
+      } catch (error) {
+        console.error('Error loading project assets:', error);
+        setProjectAssets([]);
+      } finally {
+        setIsAssetsLoading(false);
+      }
+    };
+
+    void loadProjectAssets();
+  }, [currentProjectSlug]);
 
   const updatePrompt = (index: number, value: string) => {
     setPrompts((current) =>
@@ -211,7 +258,7 @@ export default function Page() {
   };
 
   const openFolder = () => {
-    const fallbackUrl = outputs[0]?.publicUrl;
+    const fallbackUrl = projectAssets[0]?.publicUrl || outputs[0]?.publicUrl;
     const targetProject = projectInfo ?? activeProject;
     if (!targetProject && !fallbackUrl) {
       return;
@@ -227,6 +274,48 @@ export default function Page() {
     }
 
     window.open(toFileUrl(targetProject.resultsDir), '_blank', 'noopener,noreferrer');
+  };
+
+  const handleDeleteAsset = async (fileName: string) => {
+    if (!currentProjectSlug) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Eliminar ${fileName}?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setError('');
+    setMessage(`Eliminando ${fileName}...`);
+
+    try {
+      const response = await fetch(
+        `/api/projects/${encodeURIComponent(currentProjectSlug)}/assets`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({fileName}),
+        },
+      );
+
+      const data = (await response.json().catch(() => ({}))) as {error?: string};
+      if (!response.ok) {
+        setMessage('');
+        setError(data.error || 'No se pudo eliminar la imagen.');
+        return;
+      }
+
+      setProjectAssets((current) => current.filter((asset) => asset.fileName !== fileName));
+      setMessage(`Imagen eliminada: ${fileName}`);
+    } catch (deleteError) {
+      setMessage('');
+      setError(
+        deleteError instanceof Error ? deleteError.message : 'Error inesperado al eliminar.',
+      );
+    }
   };
 
   return (
@@ -255,7 +344,7 @@ export default function Page() {
             </div>
             <div className="stat">
               <span>Imágenes listas</span>
-              <strong>{outputs.length}</strong>
+              <strong>{projectAssets.length}</strong>
             </div>
           </div>
         </aside>
@@ -424,45 +513,64 @@ export default function Page() {
             </div>
             <div className="stat">
               <span>Estado</span>
-              <strong>{isGenerating ? 'Trabajando' : 'En espera'}</strong>
+              <strong>{isGenerating ? 'Trabajando' : isAssetsLoading ? 'Cargando carpeta' : 'En espera'}</strong>
             </div>
           </div>
 
-          <div style={{marginTop: 16}} className="message">
+          <div className="message messageSpaced">
             Si quieres repetir el lote, solo cambia los prompts o el proyecto y vuelve a generar.
           </div>
         </div>
       </section>
 
-      {outputs.length > 0 && (
-        <section className="gallery">
-          <div className="panelHeader">
-            <div>
-              <h2>Resultados</h2>
-              <p>Cada tarjeta enlaza al archivo guardado dentro de public/proyectos.</p>
-            </div>
+      <section className="gallery">
+        <div className="panelHeader">
+          <div>
+            <h2>Imágenes del proyecto</h2>
+            <p>Cada imagen queda guardada en la carpeta del proyecto y se puede descargar o eliminar.</p>
           </div>
+        </div>
 
+        {projectAssets.length > 0 ? (
           <div className="galleryGrid">
-            {outputs.map((output) => (
-              <article className="resultCard" key={output.id}>
+            {projectAssets.map((asset) => (
+              <article className="resultCard" key={asset.fileName}>
                 <div className="resultImageWrap">
-                  <img src={output.publicUrl} alt={output.label} />
+                  <img src={asset.publicUrl} alt={asset.fileName} />
                 </div>
                 <div className="resultMeta">
-                  <h3>{output.label}</h3>
-                  <p>{output.prompt}</p>
-                  <p style={{marginTop: 10}}>
-                    <a href={output.publicUrl} target="_blank" rel="noreferrer">
-                      Abrir imagen
+                  <h3>{asset.fileName}</h3>
+                  <p>{asset.contentType}</p>
+                  <div className="assetActions">
+                    <a href={asset.downloadUrl} className="button buttonSecondary buttonSmall">
+                      Descargar
                     </a>
-                  </p>
+                    <a
+                      href={asset.publicUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="button buttonSecondary buttonSmall"
+                    >
+                      Abrir
+                    </a>
+                    <button
+                      type="button"
+                      className="button buttonDanger buttonSmall"
+                      onClick={() => handleDeleteAsset(asset.fileName)}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <div className="emptyState">
+            Aún no hay imágenes guardadas para este proyecto. Genera un lote para poblar la carpeta.
+          </div>
+        )}
+      </section>
     </main>
   );
 }

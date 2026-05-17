@@ -279,6 +279,10 @@ textarea {
   color: var(--danger);
 }
 
+.messageSpaced {
+  margin-top: 16px;
+}
+
 .gallery {
   margin-top: 18px;
   padding: 22px;
@@ -335,6 +339,27 @@ textarea {
 .compact {
   font-size: 0.9rem;
   color: var(--muted);
+}
+
+.assetActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.buttonSmall {
+  padding: 10px 14px;
+  font-size: 0.88rem;
+}
+
+.emptyState {
+  margin-top: 16px;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  color: var(--muted);
+  background: rgba(3, 8, 16, 0.24);
 }
 
 @media (max-width: 1100px) {

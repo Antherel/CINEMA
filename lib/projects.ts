@@ -20,6 +20,13 @@ export type StoredAsset = {
   storageMode: 'local' | 'cloud';
 };
 
+export type ProjectAsset = StoredAsset & {
+  fileName: string;
+  contentType: string;
+  downloadUrl: string;
+  updatedAt?: string;
+};
+
 type RegistryRecord = {
   displayName: string;
   slug: string;
@@ -128,6 +135,35 @@ async function saveCloudRegistry(projects: RegistryRecord[]) {
 
 function buildFirebaseDownloadUrl(bucketName: string, objectPath: string, token: string) {
   return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`;
+}
+
+function buildAssetDownloadUrl(projectSlug: string, fileName: string) {
+  return `/api/projects/${encodeURIComponent(projectSlug)}/assets?download=1&fileName=${encodeURIComponent(fileName)}`;
+}
+
+function safeAssetFileName(fileName: string) {
+  const normalized = path.basename(fileName);
+  if (!normalized || normalized !== fileName || normalized.includes('..')) {
+    throw new Error('Invalid asset file name.');
+  }
+
+  return normalized;
+}
+
+function mimeTypeFromFileName(fileName: string) {
+  switch (path.extname(fileName).toLowerCase()) {
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg';
+    case '.png':
+      return 'image/png';
+    case '.webp':
+      return 'image/webp';
+    case '.gif':
+      return 'image/gif';
+    default:
+      return 'application/octet-stream';
+  }
 }
 
 async function uploadCloudAsset(
@@ -317,4 +353,173 @@ export async function saveGeneratedAsset(
 
 export function toResultPublicUrl(projectSlug: string, fileName: string): string {
   return `/proyectos/${projectSlug}/assets_produccion/${fileName}`;
+}
+
+async function readLocalAsset(projectSlug: string, fileName: string): Promise<ProjectAsset | null> {
+  const safeName = safeAssetFileName(fileName);
+  const project = getProjectPaths(projectSlug);
+  const filePath = path.join(project.resultsDir, safeName);
+
+  try {
+    const stats = await fs.stat(filePath);
+    if (!stats.isFile()) {
+      return null;
+    }
+
+    return {
+      fileName: safeName,
+      filePath,
+      publicUrl: toResultPublicUrl(project.slug, safeName),
+      storageMode: 'local',
+      contentType: mimeTypeFromFileName(safeName),
+      downloadUrl: buildAssetDownloadUrl(project.slug, safeName),
+      updatedAt: stats.mtime.toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function readCloudAsset(projectSlug: string, fileName: string): Promise<ProjectAsset | null> {
+  const safeName = safeAssetFileName(fileName);
+  const bucket = getBucket();
+  if (!bucket) {
+    return null;
+  }
+
+  const objectPath = `${getCloudProjectPrefix(projectSlug)}/assets_produccion/${safeName}`;
+  const file = bucket.file(objectPath);
+  const [exists] = await file.exists();
+  if (!exists) {
+    return null;
+  }
+
+  const [metadata] = await file.getMetadata();
+  const token = String(metadata.metadata?.firebaseStorageDownloadTokens ?? '').split(',')[0].trim();
+
+  return {
+    fileName: safeName,
+    filePath: `gs://${bucket.name}/${objectPath}`,
+    publicUrl:
+      token.length > 0
+        ? buildFirebaseDownloadUrl(bucket.name, objectPath, token)
+        : `https://storage.googleapis.com/${bucket.name}/${encodeURIComponent(objectPath)}`,
+    storageMode: 'cloud',
+    contentType: metadata.contentType || mimeTypeFromFileName(safeName),
+    downloadUrl: buildAssetDownloadUrl(projectSlug, safeName),
+    updatedAt: metadata.updated,
+  };
+}
+
+export async function listProjectAssets(projectSlug: string): Promise<ProjectAsset[]> {
+  const safeSlug = normalizeProjectName(projectSlug);
+
+  if (isCloudMode()) {
+    const bucket = getBucket();
+    if (!bucket) {
+      return [];
+    }
+
+    const prefix = `${getCloudProjectPrefix(safeSlug)}/assets_produccion/`;
+    const [files] = await bucket.getFiles({prefix});
+    const assets = await Promise.all(
+      files
+        .filter((file) => file.name.startsWith(prefix) && !file.name.endsWith('/'))
+        .map(async (file) => {
+          const fileName = path.basename(file.name);
+          return readCloudAsset(safeSlug, fileName);
+        }),
+    );
+
+    return assets
+      .filter((asset): asset is ProjectAsset => Boolean(asset))
+      .sort((left, right) => (right.updatedAt || '').localeCompare(left.updatedAt || ''));
+  }
+
+  const project = getProjectPaths(safeSlug);
+  try {
+    await fs.mkdir(project.resultsDir, {recursive: true});
+  } catch {
+    return [];
+  }
+
+  const entries = await fs.readdir(project.resultsDir, {withFileTypes: true});
+  const assets = await Promise.all(
+    entries
+      .filter((entry) => entry.isFile())
+      .map(async (entry) => readLocalAsset(safeSlug, entry.name)),
+  );
+
+  return assets
+    .filter((asset): asset is ProjectAsset => Boolean(asset))
+    .sort((left, right) => (right.updatedAt || '').localeCompare(left.updatedAt || ''));
+}
+
+export async function deleteProjectAsset(projectSlug: string, fileName: string) {
+  const safeSlug = normalizeProjectName(projectSlug);
+  const safeName = safeAssetFileName(fileName);
+
+  if (isCloudMode()) {
+    const bucket = getBucket();
+    if (!bucket) {
+      throw new Error('Cloud Storage bucket is not configured.');
+    }
+
+    const objectPath = `${getCloudProjectPrefix(safeSlug)}/assets_produccion/${safeName}`;
+    await bucket.file(objectPath).delete({ignoreNotFound: true});
+    return;
+  }
+
+  const project = getProjectPaths(safeSlug);
+  const filePath = path.join(project.resultsDir, safeName);
+
+  try {
+    await fs.unlink(filePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
+  }
+}
+
+export async function readProjectAsset(projectSlug: string, fileName: string) {
+  const safeSlug = normalizeProjectName(projectSlug);
+  const safeName = safeAssetFileName(fileName);
+
+  if (isCloudMode()) {
+    const bucket = getBucket();
+    if (!bucket) {
+      throw new Error('Cloud Storage bucket is not configured.');
+    }
+
+    const objectPath = `${getCloudProjectPrefix(safeSlug)}/assets_produccion/${safeName}`;
+    const file = bucket.file(objectPath);
+    const [exists] = await file.exists();
+    if (!exists) {
+      throw new Error('Asset not found.');
+    }
+
+    const [bytes] = await file.download();
+    const [metadata] = await file.getMetadata();
+
+    return {
+      fileName: safeName,
+      filePath: `gs://${bucket.name}/${objectPath}`,
+      contentType: metadata.contentType || mimeTypeFromFileName(safeName),
+      bytes,
+      storageMode: 'cloud' as const,
+    };
+  }
+
+  const project = getProjectPaths(safeSlug);
+  const filePath = path.join(project.resultsDir, safeName);
+  const bytes = await fs.readFile(filePath);
+
+  return {
+    fileName: safeName,
+    filePath,
+    contentType: mimeTypeFromFileName(safeName),
+    bytes,
+    storageMode: 'local' as const,
+  };
 }
