@@ -19,17 +19,24 @@ let firebaseConfig: Record<string, string> = {};
 async function getConfig(): Promise<Record<string, string>> {
   if (Object.keys(firebaseConfig).length > 0) return firebaseConfig;
 
-  try {
-    const response = await fetch('/api/firebase-config');
-    if (!response.ok) {
-      throw new Error('Failed to fetch Firebase config');
+  const endpoints = ['/api/firebase-config', '/api/auth/config'];
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint);
+      if (!response.ok) {
+        continue;
+      }
+      firebaseConfig = await response.json();
+      return firebaseConfig;
+    } catch {
+      // Try the next endpoint.
     }
-    firebaseConfig = await response.json();
-    return firebaseConfig;
-  } catch (error) {
-    console.error('Error fetching Firebase config:', error);
-    throw error;
   }
+
+  const error = new Error('Failed to fetch Firebase config');
+  console.error('Error fetching Firebase config:', error);
+  throw error;
 }
 
 // Initialize Firebase (will be called lazily)

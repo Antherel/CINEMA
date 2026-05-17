@@ -3,8 +3,18 @@ nodeVersion: 22
 env:
   - variable: GEMINI_API_KEY
     secret: GEMINI_API_KEY
+  - variable: FIREBASE_API_KEY
+    value: AIzaSyB7PX7_oY6daSoonXFYMoE_eHPkYbL2S7U
+  - variable: FIREBASE_AUTH_DOMAIN
+    value: gen-lang-client-0773458973.firebaseapp.com
+  - variable: FIREBASE_PROJECT_ID
+    value: gen-lang-client-0773458973
   - variable: FIREBASE_STORAGE_BUCKET
     value: gen-lang-client-0773458973.firebasestorage.app
+  - variable: FIREBASE_MESSAGING_SENDER_ID
+    value: "793279979913"
+  - variable: FIREBASE_APP_ID
+    value: 1:793279979913:web:34524ba09cf1ec3ba08158
 
 # Firebase App Hosting provides FIREBASE_CONFIG automatically at runtime.
 # The app uses FIREBASE_STORAGE_BUCKET to find the Cloud Storage bucket.

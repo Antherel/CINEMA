@@ -75,15 +75,47 @@ export function getFirebaseWebConfig(): Record<string, string> {
   }
 
   try {
-    const config = JSON.parse(firebaseConfig);
-    // Map Firebase Admin config keys to web SDK keys
+    const config = JSON.parse(firebaseConfig) as Record<string, string | undefined>;
+
+    const projectId =
+      config.project_id ||
+      config.projectId ||
+      process.env.FIREBASE_PROJECT_ID ||
+      '';
+
+    // Support both snake_case and camelCase Firebase config formats.
     return {
-      apiKey: config.api_key || process.env.FIREBASE_API_KEY || '',
-      authDomain: config.auth_domain || '',
-      projectId: config.project_id || '',
-      storageBucket: config.storage_bucket || '',
-      messagingSenderId: config.messaging_sender_id || '',
-      appId: config.app_id || '',
+      apiKey:
+        config.api_key ||
+        config.apiKey ||
+        process.env.FIREBASE_API_KEY ||
+        process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
+        '',
+      authDomain:
+        config.auth_domain ||
+        config.authDomain ||
+        process.env.FIREBASE_AUTH_DOMAIN ||
+        process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ||
+        (projectId ? `${projectId}.firebaseapp.com` : ''),
+      projectId,
+      storageBucket:
+        config.storage_bucket ||
+        config.storageBucket ||
+        process.env.FIREBASE_STORAGE_BUCKET ||
+        process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+        '',
+      messagingSenderId:
+        config.messaging_sender_id ||
+        config.messagingSenderId ||
+        process.env.FIREBASE_MESSAGING_SENDER_ID ||
+        process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ||
+        '',
+      appId:
+        config.app_id ||
+        config.appId ||
+        process.env.FIREBASE_APP_ID ||
+        process.env.NEXT_PUBLIC_FIREBASE_APP_ID ||
+        '',
     };
   } catch (error) {
     console.error('Failed to parse Firebase config:', error);
