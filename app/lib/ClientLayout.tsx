@@ -7,7 +7,7 @@ import {useAuth} from '@/app/lib/AuthProvider';
 /**
  * Public paths that don't require authentication
  */
-const publicPaths = ['/login', '/api/auth/config'];
+const publicPaths = ['/login', '/api/firebase-config'];
 
 /**
  * Client-side layout wrapper that handles auth redirects

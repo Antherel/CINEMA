@@ -20,7 +20,7 @@ async function getConfig(): Promise<Record<string, string>> {
   if (Object.keys(firebaseConfig).length > 0) return firebaseConfig;
 
   try {
-    const response = await fetch('/api/auth/config');
+    const response = await fetch('/api/firebase-config');
     if (!response.ok) {
       throw new Error('Failed to fetch Firebase config');
     }

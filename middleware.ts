@@ -4,7 +4,7 @@ import {NextRequest, NextResponse} from 'next/server';
 const publicPaths = [
   '/',
   '/login',
-  '/api/auth/config',  // Public endpoint to get Firebase config
+  '/api/firebase-config',  // Public endpoint to get Firebase config
 ];
 
 // Check if a path is public
