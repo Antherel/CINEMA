@@ -1,6 +1,6 @@
 env:
   - variable: GEMINI_API_KEY
-    secret: geminiApiKey
+    secret: GEMINI_API_KEY
 
 # Firebase App Hosting provides FIREBASE_CONFIG automatically at runtime.
 # The app uses that value to discover the default Storage bucket when deployed.
