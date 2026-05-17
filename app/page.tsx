@@ -118,24 +118,29 @@ export default function Page() {
         return;
       }
 
-    if (!('project' in data)) {
-      setMessage('');
-      setError('No se pudo crear el proyecto.');
-      return;
-    }
+      if (!('project' in data)) {
+        setMessage('');
+        setError('No se pudo crear el proyecto.');
+        return;
+      }
 
-    const createdProject = data.project;
-    setProjects((current) => {
-      const withoutDuplicate = current.filter(
-        (project) => project.slug !== createdProject.slug,
-      );
-      return [...withoutDuplicate, createdProject].sort((left, right) =>
-        left.slug.localeCompare(right.slug),
-      );
-    });
-    setSelectedProject(createdProject.slug);
-    setProjectInfo(createdProject);
-    setMessage(`Proyecto listo: ${createdProject.displayName}`);
+      const createdProject = data.project;
+      setProjects((current) => {
+        const withoutDuplicate = current.filter(
+          (project) => project.slug !== createdProject.slug,
+        );
+        return [...withoutDuplicate, createdProject].sort((left, right) =>
+          left.slug.localeCompare(right.slug),
+        );
+      });
+      setSelectedProject(createdProject.slug);
+      setProjectInfo(createdProject);
+      setMessage(`Proyecto listo: ${createdProject.displayName}`);
+      setProjectName('');
+    } catch (error) {
+      setMessage('');
+      setError(`Error: ${error instanceof Error ? error.message : 'Desconocido'}`);
+    }
   };
 
   const handleGenerate = async () => {
