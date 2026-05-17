@@ -30,11 +30,24 @@ type AssetItem = {
   updatedAt?: string;
 };
 
+type PromptPreset = {
+  id: string;
+  name: string;
+  generalPrompt: string;
+  prompts: typeof DEFAULT_PROMPTS;
+  aspectRatio: string;
+  imageSize: string;
+  useWhiteBackground: boolean;
+  useRealisticStyle: boolean;
+};
+
 const DEFAULT_PROMPTS = [
   {id: 'a', label: 'Toma 1', prompt: ''},
   {id: 'b', label: 'Toma 2', prompt: ''},
   {id: 'c', label: 'Toma 3', prompt: ''},
 ];
+
+const PROMPT_PRESETS_STORAGE_KEY = 'videoclip.promptPresets.v1';
 
 function makeProjectName(seed: string) {
   const value = seed.trim();
@@ -54,6 +67,11 @@ export default function Page() {
   const [aspectRatio, setAspectRatio] = useState('1:1');
   const [imageSize, setImageSize] = useState('1K');
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
+  const [useWhiteBackground, setUseWhiteBackground] = useState(false);
+  const [useRealisticStyle, setUseRealisticStyle] = useState(false);
+  const [presets, setPresets] = useState<PromptPreset[]>([]);
+  const [presetName, setPresetName] = useState('');
+  const [selectedPresetId, setSelectedPresetId] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAssetsLoading, setIsAssetsLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -129,6 +147,43 @@ export default function Page() {
     void loadProjectAssets();
   }, [currentProjectSlug]);
 
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(PROMPT_PRESETS_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as PromptPreset[];
+      if (!Array.isArray(parsed)) {
+        return;
+      }
+
+      const normalized = parsed
+        .filter((preset) => typeof preset?.name === 'string' && preset.name.trim().length > 0)
+        .map((preset) => ({
+          ...preset,
+          prompts: Array.isArray(preset.prompts) && preset.prompts.length === 3
+            ? preset.prompts
+            : DEFAULT_PROMPTS,
+          useWhiteBackground: Boolean(preset.useWhiteBackground),
+          useRealisticStyle: Boolean(preset.useRealisticStyle),
+        }));
+
+      setPresets(normalized);
+    } catch (storageError) {
+      console.error('Failed to load prompt presets:', storageError);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(PROMPT_PRESETS_STORAGE_KEY, JSON.stringify(presets));
+    } catch (storageError) {
+      console.error('Failed to save prompt presets:', storageError);
+    }
+  }, [presets]);
+
   const updatePrompt = (index: number, value: string) => {
     setPrompts((current) =>
       current.map((entry, promptIndex) =>
@@ -198,9 +253,26 @@ export default function Page() {
     try {
       const formData = new FormData();
       const resolvedProjectName = makeProjectName(projectName || selectedProject);
+      const promptModifiers: string[] = [];
+
+      if (useWhiteBackground) {
+        promptModifiers.push(
+          'Usar fondo blanco puro, limpio y uniforme, sin texturas ni elementos extra.',
+        );
+      }
+
+      if (useRealisticStyle) {
+        promptModifiers.push(
+          'Estilo fotográfico realista, iluminación natural y detalles de alta fidelidad.',
+        );
+      }
+
+      const resolvedGeneralPrompt = [generalPrompt.trim(), ...promptModifiers]
+        .filter(Boolean)
+        .join('\n');
 
       formData.append('projectName', resolvedProjectName);
-      formData.append('generalPrompt', generalPrompt);
+      formData.append('generalPrompt', resolvedGeneralPrompt);
       formData.append('aspectRatio', aspectRatio);
       formData.append('imageSize', imageSize);
       formData.append('prompts', JSON.stringify(prompts));
@@ -255,6 +327,70 @@ export default function Page() {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleSavePreset = () => {
+    const name = presetName.trim();
+    if (!name) {
+      setError('Escribe un nombre para el preset.');
+      return;
+    }
+
+    const preset: PromptPreset = {
+      id: crypto.randomUUID(),
+      name,
+      generalPrompt,
+      prompts,
+      aspectRatio,
+      imageSize,
+      useWhiteBackground,
+      useRealisticStyle,
+    };
+
+    setError('');
+    setPresets((current) => [preset, ...current]);
+    setSelectedPresetId(preset.id);
+    setPresetName('');
+    setMessage(`Preset guardado: ${name}`);
+  };
+
+  const handleLoadPreset = () => {
+    const preset = presets.find((entry) => entry.id === selectedPresetId);
+    if (!preset) {
+      setError('Selecciona un preset para cargar.');
+      return;
+    }
+
+    setError('');
+    setGeneralPrompt(preset.generalPrompt);
+    setPrompts(preset.prompts);
+    setAspectRatio(preset.aspectRatio);
+    setImageSize(preset.imageSize);
+    setUseWhiteBackground(preset.useWhiteBackground);
+    setUseRealisticStyle(preset.useRealisticStyle);
+    setMessage(`Preset cargado: ${preset.name}`);
+  };
+
+  const handleDeletePreset = () => {
+    if (!selectedPresetId) {
+      setError('Selecciona un preset para eliminar.');
+      return;
+    }
+
+    const preset = presets.find((entry) => entry.id === selectedPresetId);
+    if (!preset) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Eliminar preset ${preset.name}?`);
+    if (!confirmed) {
+      return;
+    }
+
+    setError('');
+    setPresets((current) => current.filter((entry) => entry.id !== selectedPresetId));
+    setSelectedPresetId('');
+    setMessage(`Preset eliminado: ${preset.name}`);
   };
 
   const openFolder = () => {
@@ -421,6 +557,72 @@ export default function Page() {
                 onChange={(event) => setGeneralPrompt(event.target.value)}
                 placeholder="Describe el estilo, la luz, la camara y las restricciones comunes para todo el lote."
               />
+            </div>
+
+            <div className="fieldRow">
+              <div className="field">
+                <label htmlFor="preset-name">Guardar preset</label>
+                <input
+                  id="preset-name"
+                  className="input"
+                  value={presetName}
+                  onChange={(event) => setPresetName(event.target.value)}
+                  placeholder="Producto realista blanco"
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="preset-select">Presets guardados</label>
+                <select
+                  id="preset-select"
+                  className="select"
+                  value={selectedPresetId}
+                  onChange={(event) => setSelectedPresetId(event.target.value)}
+                >
+                  <option value="">Selecciona preset</option>
+                  {presets.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label>Acciones preset</label>
+                <div className="actions">
+                  <button type="button" className="button buttonSecondary buttonSmall" onClick={handleSavePreset}>
+                    Guardar
+                  </button>
+                  <button type="button" className="button buttonSecondary buttonSmall" onClick={handleLoadPreset}>
+                    Cargar
+                  </button>
+                  <button type="button" className="button buttonDanger buttonSmall" onClick={handleDeletePreset}>
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="checkRow">
+              <label className="checkItem" htmlFor="check-white-background">
+                <input
+                  id="check-white-background"
+                  type="checkbox"
+                  checked={useWhiteBackground}
+                  onChange={(event) => setUseWhiteBackground(event.target.checked)}
+                />
+                Fondo blanco
+              </label>
+              <label className="checkItem" htmlFor="check-realistic-style">
+                <input
+                  id="check-realistic-style"
+                  type="checkbox"
+                  checked={useRealisticStyle}
+                  onChange={(event) => setUseRealisticStyle(event.target.checked)}
+                />
+                Realista
+              </label>
             </div>
 
             <div className="fieldRow">
