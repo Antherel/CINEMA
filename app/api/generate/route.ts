@@ -135,7 +135,6 @@ export async function POST(request: Request) {
           imageConfig: {
             aspectRatio,
             imageSize,
-            outputMimeType: 'image/png',
           },
         },
       });
