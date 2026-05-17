@@ -1,4 +1,6 @@
 import type {ReactNode} from 'react';
+import {AuthProvider} from '@/app/lib/AuthProvider';
+import ClientLayout from '@/app/lib/ClientLayout';
 import './globals.css';
 
 export const metadata = {
@@ -13,7 +15,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        <AuthProvider>
+          <ClientLayout>{children}</ClientLayout>
+        </AuthProvider>
+      </body>
     </html>
   );
 }

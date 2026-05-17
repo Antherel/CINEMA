@@ -1,9 +1,10 @@
-import {NextResponse} from 'next/server';
+import {NextRequest, NextResponse} from 'next/server';
 import {
   deleteProjectAsset,
   listProjectAssets,
   readProjectAsset,
 } from '@/lib/projects';
+import {verifyIdToken, checkEmailWhitelist} from '@/app/lib/auth';
 
 export const runtime = 'nodejs';
 
@@ -13,7 +14,55 @@ type RouteParams = {
   }>;
 };
 
-export async function GET(request: Request, context: RouteParams) {
+/**
+ * Verify Firebase auth token
+ */
+async function verifyAuth(request: NextRequest): Promise<{valid: boolean; response?: Response}> {
+  try {
+    const authHeader = request.headers.get('authorization');
+    const token = authHeader?.replace('Bearer ', '');
+
+    if (!token) {
+      return {
+        valid: false,
+        response: NextResponse.json({error: 'Missing authentication token'}, {status: 401}),
+      };
+    }
+
+    const decodedToken = await verifyIdToken(token);
+    const userEmail = decodedToken.email;
+
+    if (!checkEmailWhitelist(userEmail)) {
+      console.warn(`Blocked request from unauthorized email: ${userEmail}`);
+      return {
+        valid: false,
+        response: NextResponse.json(
+          {error: 'Access denied. Your email is not authorized.'},
+          {status: 403}
+        ),
+      };
+    }
+
+    return {valid: true};
+  } catch (error) {
+    console.error('Auth verification failed:', error);
+    return {
+      valid: false,
+      response: NextResponse.json(
+        {error: 'Invalid or expired authentication token'},
+        {status: 401}
+      ),
+    };
+  }
+}
+
+export async function GET(request: NextRequest, context: RouteParams) {
+  // Verify authentication
+  const auth = await verifyAuth(request);
+  if (!auth.valid) {
+    return auth.response!;
+  }
+
   try {
     const {slug} = await context.params;
     const url = new URL(request.url);
@@ -52,7 +101,13 @@ export async function GET(request: Request, context: RouteParams) {
   }
 }
 
-export async function DELETE(request: Request, context: RouteParams) {
+export async function DELETE(request: NextRequest, context: RouteParams) {
+  // Verify authentication
+  const auth = await verifyAuth(request);
+  if (!auth.valid) {
+    return auth.response!;
+  }
+
   try {
     const {slug} = await context.params;
     const body = (await request.json().catch(() => null)) as

@@ -5,7 +5,10 @@ env:
     secret: GEMINI_API_KEY
   - variable: FIREBASE_STORAGE_BUCKET
     value: gen-lang-client-0773458973.firebasestorage.app
+  - variable: ALLOWED_EMAILS
+    secret: ALLOWED_EMAILS
 
 # Firebase App Hosting provides FIREBASE_CONFIG automatically at runtime.
 # The app uses FIREBASE_STORAGE_BUCKET to find the Cloud Storage bucket.
 # Fallback to FIREBASE_CONFIG.storageBucket if not set.
+# ALLOWED_EMAILS: Comma-separated list of authorized email addresses (e.g., "user@example.com,another@example.com")
