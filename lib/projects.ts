@@ -140,22 +140,34 @@ async function uploadCloudAsset(
     throw new Error('Cloud Storage bucket is not configured.');
   }
 
-  const token = randomUUID().replace(/-/g, '');
-  await bucket.file(objectPath).save(bytes, {
-    resumable: false,
-    contentType,
-    metadata: {
+  const bucketName = resolveBucketName();
+  try {
+    const token = randomUUID().replace(/-/g, '');
+    await bucket.file(objectPath).save(bytes, {
+      resumable: false,
+      contentType,
       metadata: {
-        firebaseStorageDownloadTokens: token,
+        metadata: {
+          firebaseStorageDownloadTokens: token,
+        },
       },
-    },
-  });
+    });
 
-  return {
-    filePath: `gs://${bucket.name}/${objectPath}`,
-    publicUrl: buildFirebaseDownloadUrl(bucket.name, objectPath, token),
-    storageMode: 'cloud',
-  };
+    return {
+      filePath: `gs://${bucket.name}/${objectPath}`,
+      publicUrl: buildFirebaseDownloadUrl(bucket.name, objectPath, token),
+      storageMode: 'cloud',
+    };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    if (errorMsg.includes('does not exist')) {
+      throw new Error(
+        `Cloud Storage bucket "${bucketName}" does not exist. ` +
+        `Create it in Google Cloud Console or verify the FIREBASE_STORAGE_BUCKET environment variable.`
+      );
+    }
+    throw error;
+  }
 }
 
 export function normalizeProjectName(name: string): string {
