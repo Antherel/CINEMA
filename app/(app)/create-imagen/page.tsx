@@ -1,9 +1,14 @@
 'use client';
 
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {useAuth} from '@/app/lib/AuthProvider';
 import ReferenceManager, {type Reference} from '@/components/ReferenceManager';
 import ReferencePicker from '@/components/ReferencePicker';
+
+type ProjectItem = {
+  displayName: string;
+  slug: string;
+};
 
 type GeneratedImage = {
   id: string;
@@ -29,6 +34,8 @@ type PricingSummary = {
 export default function CreateImagePage() {
   const {getIdToken} = useAuth();
   const [projectName, setProjectName] = useState('');
+  const [selectedProjectSlug, setSelectedProjectSlug] = useState('');
+  const [existingProjects, setExistingProjects] = useState<ProjectItem[]>([]);
   const [prompt, setPrompt] = useState('');
   const [references, setReferences] = useState<Reference[]>([]);
   const [selectedReferences, setSelectedReferences] = useState<string[]>([]);
@@ -37,6 +44,48 @@ export default function CreateImagePage() {
   const [error, setError] = useState('');
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
   const [pricing, setPricing] = useState<PricingSummary | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadProjects = async () => {
+      try {
+        const token = await getIdToken();
+        const response = await fetch('/api/projects', {
+          headers: {'Authorization': `Bearer ${token}`},
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as {projects?: ProjectItem[]};
+        if (!cancelled) {
+          setExistingProjects(data.projects ?? []);
+        }
+      } catch {
+        // Ignore project-load errors to avoid blocking generation flow.
+      }
+    };
+
+    loadProjects();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getIdToken]);
+
+  const handleProjectSelection = (slug: string) => {
+    setSelectedProjectSlug(slug);
+    if (!slug) {
+      return;
+    }
+
+    const selectedProject = existingProjects.find((project) => project.slug === slug);
+    if (selectedProject) {
+      setProjectName(selectedProject.displayName);
+    }
+  };
 
   const handleAddReference = (ref: Reference) => {
     setReferences([...references, ref]);
@@ -139,6 +188,25 @@ export default function CreateImagePage() {
           </div>
 
           <div className="form">
+            {existingProjects.length > 0 && (
+              <div className="field">
+                <label htmlFor="existing-project">Abrir proyecto existente</label>
+                <select
+                  id="existing-project"
+                  className="select"
+                  value={selectedProjectSlug}
+                  onChange={(e) => handleProjectSelection(e.target.value)}
+                >
+                  <option value="">Crear o escribir uno nuevo</option>
+                  {existingProjects.map((project) => (
+                    <option key={project.slug} value={project.slug}>
+                      {project.displayName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="field">
               <label htmlFor="project-name">Nombre del proyecto</label>
               <input

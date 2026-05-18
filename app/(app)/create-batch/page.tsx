@@ -1,6 +1,6 @@
 'use client';
 
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {useAuth} from '@/app/lib/AuthProvider';
 import ReferenceManager, {type Reference} from '@/components/ReferenceManager';
 import ReferencePicker from '@/components/ReferencePicker';
@@ -40,6 +40,11 @@ type PricingSummary = {
   note?: string;
 };
 
+type ProjectItem = {
+  displayName: string;
+  slug: string;
+};
+
 /**
  * Batch image generation page (3 images)
  * Supports multiple references with per-image selection
@@ -47,6 +52,8 @@ type PricingSummary = {
 export default function CreateBatchPage() {
   const {getIdToken} = useAuth();
   const [projectName, setProjectName] = useState('');
+  const [selectedProjectSlug, setSelectedProjectSlug] = useState('');
+  const [existingProjects, setExistingProjects] = useState<ProjectItem[]>([]);
   const [imageCount, setImageCount] = useState(3);
   const [prompts, setPrompts] = useState(() => createPromptEntries(3));
   const [references, setReferences] = useState<Reference[]>([]);
@@ -60,6 +67,48 @@ export default function CreateBatchPage() {
   const [error, setError] = useState('');
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [pricing, setPricing] = useState<PricingSummary | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadProjects = async () => {
+      try {
+        const token = await getIdToken();
+        const response = await fetch('/api/projects', {
+          headers: {'Authorization': `Bearer ${token}`},
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as {projects?: ProjectItem[]};
+        if (!cancelled) {
+          setExistingProjects(data.projects ?? []);
+        }
+      } catch {
+        // Ignore project-load errors to avoid blocking generation flow.
+      }
+    };
+
+    loadProjects();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getIdToken]);
+
+  const handleProjectSelection = (slug: string) => {
+    setSelectedProjectSlug(slug);
+    if (!slug) {
+      return;
+    }
+
+    const selectedProject = existingProjects.find((project) => project.slug === slug);
+    if (selectedProject) {
+      setProjectName(selectedProject.displayName);
+    }
+  };
 
   const handleUpdatePrompt = (index: number, value: string) => {
     const updated = [...prompts];
@@ -205,7 +254,24 @@ export default function CreateBatchPage() {
                 </select>
               </div>
 
-              <div className="field fieldSpanTwo">
+              <div className="field">
+                <label htmlFor="existing-project">Abrir proyecto existente</label>
+                <select
+                  id="existing-project"
+                  className="select"
+                  value={selectedProjectSlug}
+                  onChange={(e) => handleProjectSelection(e.target.value)}
+                >
+                  <option value="">Crear o escribir uno nuevo</option>
+                  {existingProjects.map((project) => (
+                    <option key={project.slug} value={project.slug}>
+                      {project.displayName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
               <label htmlFor="project-name">Nombre del proyecto</label>
               <input
                 id="project-name"
