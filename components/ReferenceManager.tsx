@@ -5,7 +5,8 @@ import React, {useState} from 'react';
 export type Reference = {
   id: string;
   name: string;
-  file: File;
+  file?: File;
+  remoteUrl?: string;
   description?: string;
 };
 
@@ -130,9 +131,11 @@ export default function ReferenceManager({
                         {ref.description}
                       </p>
                     )}
-                    <p className="referenceFileName">
-                      {ref.file.name}
-                    </p>
+                    {ref.remoteUrl ? (
+                      <img src={ref.remoteUrl} alt={ref.name} className="referenceThumbnail" />
+                    ) : ref.file ? (
+                      <p className="referenceFileName">{ref.file.name}</p>
+                    ) : null}
                   </div>
 
                   <div className="referenceEditRow">

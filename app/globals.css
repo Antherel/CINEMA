@@ -209,6 +209,21 @@ textarea {
   font-size: 0.88rem;
 }
 
+.checkboxLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(3, 8, 16, 0.42);
+}
+
+.checkboxLabel input {
+  accent-color: var(--accent);
+}
+
 .input,
 .textarea,
 .select {
@@ -518,6 +533,32 @@ textarea {
   text-align: center;
 }
 
+.promptPreviewBox {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(141, 214, 255, 0.2);
+  background: rgba(3, 8, 16, 0.55);
+}
+
+.promptPreviewHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.promptPreviewItem {
+  margin: 0;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .loginShell {
   display: flex;
   flex-direction: column;
@@ -653,6 +694,15 @@ textarea {
 
 .referenceMeta {
   margin-bottom: 0.4rem;
+}
+
+.referenceThumbnail {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-top: 0.35rem;
 }
 
 .referenceName {

@@ -10,6 +10,7 @@ import {
   ensureProjectStructure,
   saveReferenceFile,
   saveGeneratedAsset,
+  saveNamedReference,
 } from '@/lib/projects';
 import {verifyIdToken, checkEmailWhitelist} from '@/app/lib/auth';
 
@@ -44,8 +45,12 @@ function resolveApiKey(): string {
   );
 }
 
-function buildPrompt(generalPrompt: string, prompt: string, label: string) {
-  const segments = [generalPrompt.trim(), prompt.trim()].filter(Boolean);
+function buildPrompt(generalPrompt: string, prompt: string, label: string, whiteBackground: boolean, realistic: boolean) {
+  const modifiers: string[] = [];
+  if (whiteBackground) modifiers.push('Fondo blanco puro, sin sombras ni gradientes.');
+  if (realistic) modifiers.push('Estilo fotorrealista, máximo detalle y realismo.');
+
+  const segments = [generalPrompt.trim(), ...modifiers, prompt.trim()].filter(Boolean);
 
   if (segments.length === 0) {
     return `Crea una variacion visual coherente para ${label}.`;
@@ -240,6 +245,8 @@ export async function POST(request: NextRequest) {
     const generalPrompt = String(formData.get('generalPrompt') ?? '').trim();
     const aspectRatio = String(formData.get('aspectRatio') ?? '1:1');
     const imageSize = String(formData.get('imageSize') ?? '1K');
+    const whiteBackground = formData.get('whiteBackground') === '1';
+    const realistic = formData.get('realistic') === '1';
     const imageCount = Math.max(
       1,
       Math.min(
@@ -306,6 +313,34 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Collect remote references (referenceUrl_xxx) for pre-saved project references
+    for (const [key, value] of formData.entries()) {
+      if (key.startsWith('referenceUrl_') && typeof value === 'string' && value.trim()) {
+        const refId = key.replace('referenceUrl_', '');
+        if (referencesData.has(refId)) continue; // already provided as file
+        const refName = String(formData.get(`referenceName_${refId}`) ?? `Ref-${refId}`).trim();
+        const refDescription = String(formData.get(`referenceDescription_${refId}`) ?? '').trim();
+        // Fetch the remote reference image from our own API
+        const baseUrl = request.nextUrl.origin;
+        const absoluteUrl = value.startsWith('http') ? value : `${baseUrl}${value}`;
+        const refResponse = await fetch(absoluteUrl, {
+          headers: {'Authorization': request.headers.get('authorization') ?? ''},
+        });
+        if (refResponse.ok) {
+          const arrayBuffer = await refResponse.arrayBuffer();
+          const contentType = refResponse.headers.get('content-type') || 'image/jpeg';
+          const blob = new Blob([arrayBuffer], {type: contentType});
+          const file = new File([blob], `${refId}.jpg`, {type: contentType});
+          referencesData.set(refId, {
+            file,
+            name: refName,
+            description: refDescription || undefined,
+          });
+          referenceNames.set(refId, refName);
+        }
+      }
+    }
+
     // Validate references
     if (referencesData.size > 0) {
       const refsArray = Array.from(referencesData.values()).map((r) => r.file);
@@ -329,6 +364,12 @@ export async function POST(request: NextRequest) {
     // Load and convert all references to ImagePart for reuse
     const referencePartsMap: Map<string, ReturnType<typeof createPartFromBase64>> = new Map();
     for (const [refId, {file}] of referencesData.entries()) {
+      // Persist newly uploaded (non-URL) references to the project
+      const wasUploadedAsFile = formData.get(`reference_${refId}`) instanceof File;
+      if (wasUploadedAsFile) {
+        const refMeta = referencesData.get(refId)!;
+        await saveNamedReference(projectName, refId, refMeta.name, refMeta.description, refMeta.file).catch(() => {/* non-fatal */});
+      }
       const referenceBytes = Buffer.from(await file.arrayBuffer());
       const part = createPartFromBase64(
         referenceBytes.toString('base64'),
@@ -371,7 +412,7 @@ export async function POST(request: NextRequest) {
 
     for (const [index, promptEntry] of prompts.entries()) {
       const label = promptEntry.label || `Imagen ${index + 1}`;
-      const basePrompt = buildPrompt(generalPrompt, promptEntry.prompt, label);
+      const basePrompt = buildPrompt(generalPrompt, promptEntry.prompt, label, whiteBackground, realistic);
       const selectedRefIdsRaw = imageReferencesMap[promptEntry.id] ?? [];
       const selectedReferences = selectedRefIdsRaw
         .map((refId) => referencesData.get(refId))

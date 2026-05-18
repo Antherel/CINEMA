@@ -67,6 +67,10 @@ export default function CreateBatchPage() {
   const [error, setError] = useState('');
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [pricing, setPricing] = useState<PricingSummary | null>(null);
+  const [generalPrompt, setGeneralPrompt] = useState('');
+  const [whiteBackground, setWhiteBackground] = useState(false);
+  const [realistic, setRealistic] = useState(false);
+  const [promptPreview, setPromptPreview] = useState<string[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,6 +105,14 @@ export default function CreateBatchPage() {
   const handleProjectSelection = (slug: string) => {
     setSelectedProjectSlug(slug);
     if (!slug) {
+      setReferences([]);
+      setSelectedReferencesPerImage((currentMap) => {
+        const cleared: Record<string, string[]> = {};
+        Object.keys(currentMap).forEach((key) => {
+          cleared[key] = [];
+        });
+        return cleared;
+      });
       return;
     }
 
@@ -108,6 +120,36 @@ export default function CreateBatchPage() {
     if (selectedProject) {
       setProjectName(selectedProject.displayName);
     }
+
+    // Load saved references for the selected project
+    const loadRefs = async () => {
+      try {
+        const token = await getIdToken();
+        const response = await fetch(`/api/projects/${encodeURIComponent(slug)}/references`, {
+          headers: {'Authorization': `Bearer ${token}`},
+        });
+        if (!response.ok) return;
+        const data = (await response.json()) as {references?: Array<{id: string; name: string; description?: string; fileName: string; contentType: string; downloadUrl: string}>};
+        const loaded = (data.references ?? []).map((r) => ({
+          id: r.id,
+          name: r.name,
+          description: r.description,
+          remoteUrl: r.downloadUrl,
+        }));
+        setReferences(loaded);
+        setSelectedReferencesPerImage((currentMap) => {
+          const selectedIds = loaded.map((ref) => ref.id);
+          const nextMap: Record<string, string[]> = {};
+          Object.keys(currentMap).forEach((key) => {
+            nextMap[key] = selectedIds;
+          });
+          return nextMap;
+        });
+      } catch {
+        // Ignore
+      }
+    };
+    loadRefs();
   };
 
   const handleUpdatePrompt = (index: number, value: string) => {
@@ -161,6 +203,28 @@ export default function CreateBatchPage() {
     });
   };
 
+  const handleShowPreview = () => {
+    if (!projectName.trim()) {
+      setError('Por favor ingresa un nombre de proyecto.');
+      return;
+    }
+    const modifiers: string[] = [];
+    if (whiteBackground) modifiers.push('Fondo blanco puro, sin sombras ni gradientes.');
+    if (realistic) modifiers.push('Estilo fotorrealista, máximo detalle y realismo.');
+    const preview = prompts.map((p) => {
+      const segments = [generalPrompt.trim(), ...modifiers, p.prompt.trim()].filter(Boolean);
+      const base = segments.length > 0 ? segments.join('\n\n') : `Crea una variacion visual coherente para ${p.label}.`;
+      const refIds = selectedReferencesPerImage[p.id] ?? [];
+      const selectedRefs = refIds.map((id) => references.find((r) => r.id === id)).filter(Boolean) as typeof references;
+      if (selectedRefs.length === 0) return `${p.label}:\n${base}`;
+      const refLines = selectedRefs.map((r, i) => r.description?.trim() ? `${i + 1}. ${r.name}: ${r.description}` : `${i + 1}. ${r.name}`).join('\n');
+      const refSection = `Usa las imagenes de referencia adjuntas como guia visual obligatoria.\nMantén coherencia de estilo, iluminacion, materialidad y composicion con estas referencias:\n${refLines}`;
+      return `${p.label}:\n${refSection}\n\nPrompt principal:\n${base}`;
+    });
+    setPromptPreview(preview);
+    setError('');
+  };
+
   const handleGenerate = async () => {
     if (!projectName.trim()) {
       setError('Por favor ingresa un nombre de proyecto.');
@@ -172,18 +236,26 @@ export default function CreateBatchPage() {
     setMessage('Generando lote...');
     setGeneratedImages([]);
     setPricing(null);
+    setPromptPreview(null);
 
     try {
       const formData = new FormData();
       formData.append('projectName', projectName.trim());
       formData.append('imageCount', String(imageCount));
       formData.append('prompts', JSON.stringify(prompts));
+      formData.append('generalPrompt', generalPrompt.trim());
+      if (whiteBackground) formData.append('whiteBackground', '1');
+      if (realistic) formData.append('realistic', '1');
 
       // Add all references to formData
       references.forEach((ref) => {
-        formData.append(`reference_${ref.id}`, ref.file);
         formData.append(`referenceName_${ref.id}`, ref.name);
         formData.append(`referenceDescription_${ref.id}`, ref.description ?? '');
+        if (ref.file) {
+          formData.append(`reference_${ref.id}`, ref.file);
+        } else if (ref.remoteUrl) {
+          formData.append(`referenceUrl_${ref.id}`, ref.remoteUrl);
+        }
       });
 
       // Add reference selection mapping
@@ -283,6 +355,37 @@ export default function CreateBatchPage() {
               </div>
             </div>
           </div>
+
+          <div className="form">
+            <div className="field">
+              <label htmlFor="general-prompt">Prompt genérico (se aplica a todas las imágenes)</label>
+              <textarea
+                id="general-prompt"
+                className="textarea"
+                value={generalPrompt}
+                onChange={(e) => setGeneralPrompt(e.target.value)}
+                placeholder="Describe el estilo, paleta o contexto común a todas las tomas..."
+              />
+            </div>
+            <div className="fieldRow">
+              <label className="checkboxLabel">
+                <input
+                  type="checkbox"
+                  checked={whiteBackground}
+                  onChange={(e) => setWhiteBackground(e.target.checked)}
+                />
+                Fondo Blanco
+              </label>
+              <label className="checkboxLabel">
+                <input
+                  type="checkbox"
+                  checked={realistic}
+                  onChange={(e) => setRealistic(e.target.checked)}
+                />
+                Realista
+              </label>
+            </div>
+          </div>
         </div>
 
         {/* Reference Manager */}
@@ -338,10 +441,31 @@ export default function CreateBatchPage() {
             >
               {isGenerating ? 'Generando...' : 'Generar lote'}
             </button>
+            <button
+              type="button"
+              className="button buttonSecondary"
+              onClick={handleShowPreview}
+              disabled={isGenerating}
+            >
+              Ver Prompt
+            </button>
           </div>
 
           {message && <p className="message">{message}</p>}
           {error && <p className="message error">{error}</p>}
+
+          {promptPreview && (
+            <div className="promptPreviewBox">
+              <div className="promptPreviewHeader">
+                <strong>Vista previa de prompts</strong>
+                <button type="button" className="button buttonSecondary buttonSmall" onClick={() => setPromptPreview(null)}>Cerrar</button>
+              </div>
+              {promptPreview.map((text, i) => (
+                <pre key={i} className="promptPreviewItem">{text}</pre>
+              ))}
+            </div>
+          )}
+
           {pricing && (
             <p className="message">
               Coste estimado por imagen: ${pricing.estimatedCostPerImageUsd.toFixed(4)} {pricing.currency}. Total estimado: ${pricing.estimatedTotalCostUsd.toFixed(4)} {pricing.currency}.

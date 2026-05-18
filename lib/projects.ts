@@ -27,6 +27,15 @@ export type ProjectAsset = StoredAsset & {
   updatedAt?: string;
 };
 
+export type ProjectReference = {
+  id: string;
+  name: string;
+  description?: string;
+  fileName: string;
+  contentType: string;
+  downloadUrl: string;
+};
+
 type RegistryRecord = {
   displayName: string;
   slug: string;
@@ -521,5 +530,156 @@ export async function readProjectAsset(projectSlug: string, fileName: string) {
     contentType: mimeTypeFromFileName(safeName),
     bytes,
     storageMode: 'local' as const,
+  };
+}
+
+// ─── Named references (persisted per project) ────────────────────────────────
+
+type ReferenceMetadataEntry = {
+  id: string;
+  name: string;
+  description?: string;
+  fileName: string;
+  contentType: string;
+};
+
+function buildReferenceFilePath(projectSlug: string, fileName: string) {
+  const project = getProjectPaths(projectSlug);
+  return path.join(project.rootDir, 'references', fileName);
+}
+
+function buildReferenceMetadataPath(projectSlug: string) {
+  const project = getProjectPaths(projectSlug);
+  return path.join(project.rootDir, 'references', 'metadata.json');
+}
+
+function buildReferenceDownloadUrl(projectSlug: string, fileName: string) {
+  return `/api/projects/${encodeURIComponent(projectSlug)}/references?fileName=${encodeURIComponent(fileName)}`;
+}
+
+async function loadReferenceMetadataLocal(projectSlug: string): Promise<ReferenceMetadataEntry[]> {
+  const metaPath = buildReferenceMetadataPath(projectSlug);
+  try {
+    const content = await fs.readFile(metaPath, 'utf8');
+    const parsed = JSON.parse(content) as {entries?: ReferenceMetadataEntry[]};
+    return Array.isArray(parsed.entries) ? parsed.entries : [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveReferenceMetadataLocal(projectSlug: string, entries: ReferenceMetadataEntry[]) {
+  const metaPath = buildReferenceMetadataPath(projectSlug);
+  await fs.mkdir(path.dirname(metaPath), {recursive: true});
+  await fs.writeFile(metaPath, JSON.stringify({entries}, null, 2), 'utf8');
+}
+
+export async function saveNamedReference(
+  projectName: string,
+  id: string,
+  name: string,
+  description: string | undefined,
+  file: File,
+) {
+  const slug = normalizeProjectName(projectName);
+  const extension = mimeTypeToExtension(file.type || 'image/jpeg');
+  const fileName = `${id}${extension}`;
+  const bytes = Buffer.from(await file.arrayBuffer());
+
+  if (isCloudMode()) {
+    const objectPath = `${getCloudProjectPrefix(projectName)}/references/${fileName}`;
+    await uploadCloudAsset(objectPath, bytes, file.type || 'image/jpeg');
+    const bucket = getBucket();
+    if (bucket) {
+      const metaPath = `${getCloudProjectPrefix(projectName)}/references/metadata.json`;
+      let existing: ReferenceMetadataEntry[] = [];
+      try {
+        const [content] = await bucket.file(metaPath).download();
+        const parsed = JSON.parse(content.toString('utf8')) as {entries?: ReferenceMetadataEntry[]};
+        existing = Array.isArray(parsed.entries) ? parsed.entries : [];
+      } catch {
+        existing = [];
+      }
+      const filtered = existing.filter((e) => e.id !== id);
+      filtered.push({id, name, description, fileName, contentType: file.type || 'image/jpeg'});
+      await bucket.file(metaPath).save(JSON.stringify({entries: filtered}, null, 2), {
+        resumable: false,
+        contentType: 'application/json',
+      });
+    }
+    return;
+  }
+
+  const filePath = buildReferenceFilePath(slug, fileName);
+  await fs.mkdir(path.dirname(filePath), {recursive: true});
+  await fs.writeFile(filePath, bytes);
+
+  const entries = await loadReferenceMetadataLocal(slug);
+  const filtered = entries.filter((e) => e.id !== id);
+  filtered.push({id, name, description, fileName, contentType: file.type || 'image/jpeg'});
+  await saveReferenceMetadataLocal(slug, filtered);
+}
+
+export async function listProjectReferences(projectSlug: string): Promise<ProjectReference[]> {
+  const safeSlug = normalizeProjectName(projectSlug);
+
+  if (isCloudMode()) {
+    const bucket = getBucket();
+    if (!bucket) return [];
+    const metaPath = `${getCloudProjectPrefix(safeSlug)}/references/metadata.json`;
+    try {
+      const [content] = await bucket.file(metaPath).download();
+      const parsed = JSON.parse(content.toString('utf8')) as {entries?: ReferenceMetadataEntry[]};
+      const entries = Array.isArray(parsed.entries) ? parsed.entries : [];
+      return entries.map((e) => ({
+        id: e.id,
+        name: e.name,
+        description: e.description,
+        fileName: e.fileName,
+        contentType: e.contentType,
+        downloadUrl: buildReferenceDownloadUrl(safeSlug, e.fileName),
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  const entries = await loadReferenceMetadataLocal(safeSlug);
+  return entries.map((e) => ({
+    id: e.id,
+    name: e.name,
+    description: e.description,
+    fileName: e.fileName,
+    contentType: e.contentType,
+    downloadUrl: buildReferenceDownloadUrl(safeSlug, e.fileName),
+  }));
+}
+
+export async function readProjectReference(projectSlug: string, fileName: string) {
+  const safeSlug = normalizeProjectName(projectSlug);
+  const safeName = safeAssetFileName(fileName);
+
+  if (isCloudMode()) {
+    const bucket = getBucket();
+    if (!bucket) throw new Error('Cloud Storage bucket is not configured.');
+    const objectPath = `${getCloudProjectPrefix(safeSlug)}/references/${safeName}`;
+    const file = bucket.file(objectPath);
+    const [exists] = await file.exists();
+    if (!exists) throw new Error('Reference not found.');
+    const [bytes] = await file.download();
+    const [metadata] = await file.getMetadata();
+    return {
+      fileName: safeName,
+      contentType: metadata.contentType || mimeTypeFromFileName(safeName),
+      bytes,
+    };
+  }
+
+  const filePath = buildReferenceFilePath(safeSlug, safeName);
+  const bytes = await fs.readFile(filePath);
+  return {
+    fileName: safeName,
+    contentType: mimeTypeFromFileName(safeName),
+    bytes,
   };
 }

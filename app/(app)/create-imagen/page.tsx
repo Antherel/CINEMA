@@ -44,6 +44,10 @@ export default function CreateImagePage() {
   const [error, setError] = useState('');
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
   const [pricing, setPricing] = useState<PricingSummary | null>(null);
+  const [generalPrompt, setGeneralPrompt] = useState('');
+  const [whiteBackground, setWhiteBackground] = useState(false);
+  const [realistic, setRealistic] = useState(false);
+  const [promptPreview, setPromptPreview] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +82,8 @@ export default function CreateImagePage() {
   const handleProjectSelection = (slug: string) => {
     setSelectedProjectSlug(slug);
     if (!slug) {
+      setReferences([]);
+      setSelectedReferences([]);
       return;
     }
 
@@ -85,6 +91,28 @@ export default function CreateImagePage() {
     if (selectedProject) {
       setProjectName(selectedProject.displayName);
     }
+
+    const loadRefs = async () => {
+      try {
+        const token = await getIdToken();
+        const response = await fetch(`/api/projects/${encodeURIComponent(slug)}/references`, {
+          headers: {'Authorization': `Bearer ${token}`},
+        });
+        if (!response.ok) return;
+        const data = (await response.json()) as {references?: Array<{id: string; name: string; description?: string; fileName: string; contentType: string; downloadUrl: string}>};
+        const loaded = (data.references ?? []).map((r) => ({
+          id: r.id,
+          name: r.name,
+          description: r.description,
+          remoteUrl: r.downloadUrl,
+        }));
+        setReferences(loaded);
+        setSelectedReferences(loaded.map((ref) => ref.id));
+      } catch {
+        // Ignore
+      }
+    };
+    loadRefs();
   };
 
   const handleAddReference = (ref: Reference) => {
@@ -104,6 +132,27 @@ export default function CreateImagePage() {
     setReferences(references.map((r) => (r.id === id ? {...r, description} : r)));
   };
 
+  const handleShowPreview = () => {
+    if (!projectName.trim()) {
+      setError('Por favor ingresa un nombre de proyecto.');
+      return;
+    }
+    const modifiers: string[] = [];
+    if (whiteBackground) modifiers.push('Fondo blanco puro, sin sombras ni gradientes.');
+    if (realistic) modifiers.push('Estilo fotorrealista, máximo detalle y realismo.');
+    const segments = [generalPrompt.trim(), ...modifiers, prompt.trim()].filter(Boolean);
+    const base = segments.length > 0 ? segments.join('\n\n') : 'Crea una variacion visual coherente para Imagen.';
+    const selectedRefs = selectedReferences.map((id) => references.find((r) => r.id === id)).filter(Boolean) as typeof references;
+    let preview = base;
+    if (selectedRefs.length > 0) {
+      const refLines = selectedRefs.map((r, i) => r.description?.trim() ? `${i + 1}. ${r.name}: ${r.description}` : `${i + 1}. ${r.name}`).join('\n');
+      const refSection = `Usa las imagenes de referencia adjuntas como guia visual obligatoria.\nMantén coherencia de estilo, iluminacion, materialidad y composicion con estas referencias:\n${refLines}`;
+      preview = `${refSection}\n\nPrompt principal:\n${base}`;
+    }
+    setPromptPreview(preview);
+    setError('');
+  };
+
   const handleGenerate = async () => {
     if (!projectName.trim()) {
       setError('Por favor ingresa un nombre de proyecto.');
@@ -120,6 +169,7 @@ export default function CreateImagePage() {
     setMessage('Generando imagen...');
     setGeneratedImage(null);
     setPricing(null);
+    setPromptPreview(null);
 
     try {
       const formData = new FormData();
@@ -128,12 +178,19 @@ export default function CreateImagePage() {
       formData.append('prompts', JSON.stringify([
         {id: 'a', label: 'Imagen', prompt: prompt.trim()},
       ]));
+      formData.append('generalPrompt', generalPrompt.trim());
+      if (whiteBackground) formData.append('whiteBackground', '1');
+      if (realistic) formData.append('realistic', '1');
 
       // Add all references to formData
       references.forEach((ref) => {
-        formData.append(`reference_${ref.id}`, ref.file);
         formData.append(`referenceName_${ref.id}`, ref.name);
         formData.append(`referenceDescription_${ref.id}`, ref.description ?? '');
+        if (ref.file) {
+          formData.append(`reference_${ref.id}`, ref.file);
+        } else if (ref.remoteUrl) {
+          formData.append(`referenceUrl_${ref.id}`, ref.remoteUrl);
+        }
       });
 
       // Add reference selection mapping for this single image
@@ -229,6 +286,36 @@ export default function CreateImagePage() {
               />
             </div>
 
+            <div className="field">
+              <label htmlFor="general-prompt-img">Prompt genérico (opcional)</label>
+              <textarea
+                id="general-prompt-img"
+                className="textarea"
+                value={generalPrompt}
+                onChange={(e) => setGeneralPrompt(e.target.value)}
+                placeholder="Estilo, paleta de color, contexto general..."
+              />
+            </div>
+
+            <div className="fieldRow">
+              <label className="checkboxLabel">
+                <input
+                  type="checkbox"
+                  checked={whiteBackground}
+                  onChange={(e) => setWhiteBackground(e.target.checked)}
+                />
+                Fondo Blanco
+              </label>
+              <label className="checkboxLabel">
+                <input
+                  type="checkbox"
+                  checked={realistic}
+                  onChange={(e) => setRealistic(e.target.checked)}
+                />
+                Realista
+              </label>
+            </div>
+
             <div className="actions">
               <button
                 type="button"
@@ -238,7 +325,25 @@ export default function CreateImagePage() {
               >
                 {isGenerating ? 'Generando...' : 'Generar imagen'}
               </button>
+              <button
+                type="button"
+                className="button buttonSecondary"
+                onClick={handleShowPreview}
+                disabled={isGenerating}
+              >
+                Ver Prompt
+              </button>
             </div>
+
+            {promptPreview && (
+              <div className="promptPreviewBox">
+                <div className="promptPreviewHeader">
+                  <strong>Vista previa del prompt</strong>
+                  <button type="button" className="button buttonSecondary buttonSmall" onClick={() => setPromptPreview(null)}>Cerrar</button>
+                </div>
+                <pre className="promptPreviewItem">{promptPreview}</pre>
+              </div>
+            )}
 
             {message && <p className="message">{message}</p>}
             {error && <p className="message error">{error}</p>}
