@@ -133,9 +133,9 @@ export default function ViewProjectsPage() {
   if (isLoadingProjects) {
     return (
       <main className="shell">
-        <section className="grid" style={{display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px'}}>
-          <div style={{textAlign: 'center'}}>
-            <div style={{fontSize: '2rem', marginBottom: '1rem'}}>⏳</div>
+        <section className="grid vpLoadingSection">
+          <div className="vpCentered">
+            <div className="vpIconMd">⏳</div>
             <p>Cargando tus proyectos...</p>
           </div>
         </section>
@@ -147,13 +147,13 @@ export default function ViewProjectsPage() {
     return (
       <main className="shell">
         <section className="grid">
-          <div className="panel" style={{textAlign: 'center', padding: '3rem'}}>
-            <div style={{fontSize: '3rem', marginBottom: '1rem'}}>📁</div>
+          <div className="panel vpEmptyPanel">
+            <div className="vpIconLg">📁</div>
             <h2>Sin proyectos aún</h2>
-            <p style={{marginBottom: '2rem', color: '#666'}}>
+            <p className="vpLead">
               Crea tu primer proyecto generando imágenes en una de estas secciones:
             </p>
-            <div style={{display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap'}}>
+            <div className="vpActionRow">
               <Link href="/create-imagen" className="button buttonSecondary">
                 🖼️ Crear una imagen
               </Link>
@@ -169,43 +169,23 @@ export default function ViewProjectsPage() {
 
   return (
     <main className="shell">
-      <section style={{display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1rem', marginBottom: '2rem'}}>
+      <section className="vpLayout">
         {/* Sidebar - Projects List */}
-        <aside style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
+        <aside className="vpSidebar">
           <div className="panel">
             <div className="panelHeader">
-              <h2 style={{marginBottom: 0}}>Mis Proyectos</h2>
-              <p style={{marginTop: '0.5rem', fontSize: '0.875rem', color: '#666'}}>
+              <h2 className="vpNoMarginBottom">Mis Proyectos</h2>
+              <p className="vpProjectCount">
                 {projects.length} proyecto{projects.length !== 1 ? 's' : ''}
               </p>
             </div>
 
-            <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
+            <div className="vpProjectList">
               {projects.map((project) => (
                 <button
                   key={project.slug}
                   onClick={() => setSelectedProject(project)}
-                  style={{
-                    padding: '0.75rem',
-                    textAlign: 'left',
-                    background: selectedProject?.slug === project.slug ? '#667eea' : '#f9f9f9',
-                    color: selectedProject?.slug === project.slug ? 'white' : '#333',
-                    border: selectedProject?.slug === project.slug ? '2px solid #667eea' : '1px solid #ddd',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    fontWeight: selectedProject?.slug === project.slug ? 'bold' : 'normal',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (selectedProject?.slug !== project.slug) {
-                      e.currentTarget.style.backgroundColor = '#f0f0f0';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (selectedProject?.slug !== project.slug) {
-                      e.currentTarget.style.backgroundColor = '#f9f9f9';
-                    }
-                  }}
+                  className={`vpProjectButton ${selectedProject?.slug === project.slug ? 'vpProjectButtonActive' : ''}`}
                 >
                   {project.displayName}
                 </button>
@@ -214,20 +194,18 @@ export default function ViewProjectsPage() {
           </div>
 
           {/* Quick Actions */}
-          <div className="panel" style={{backgroundColor: '#f0f7ff', borderColor: '#dde8f5'}}>
-            <h3 style={{margin: '0 0 1rem 0', fontSize: '0.9rem'}}>Crear más</h3>
-            <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
+          <div className="panel vpQuickPanel">
+            <h3 className="vpQuickTitle">Crear más</h3>
+            <div className="vpQuickActions">
               <Link
                 href="/create-imagen"
-                className="button buttonSecondary buttonSmall"
-                style={{textAlign: 'center', fontSize: '0.875rem'}}
+                className="button buttonSecondary buttonSmall vpQuickLink"
               >
                 🖼️ Una imagen
               </Link>
               <Link
                 href="/create-batch"
-                className="button buttonSecondary buttonSmall"
-                style={{textAlign: 'center', fontSize: '0.875rem'}}
+                className="button buttonSecondary buttonSmall vpQuickLink"
               >
                 📸 Un lote
               </Link>
@@ -241,8 +219,8 @@ export default function ViewProjectsPage() {
             {selectedProject && (
               <>
                 <div>
-                  <h1 style={{margin: '0 0 0.5rem 0'}}>{selectedProject.displayName}</h1>
-                  <p style={{margin: 0, color: '#666', fontSize: '0.9rem'}}>
+                  <h1 className="vpProjectTitle">{selectedProject.displayName}</h1>
+                  <p className="vpProjectMeta">
                     {isLoadingAssets ? '...cargando...' : `${assets.length} imagen${assets.length !== 1 ? 'es' : ''}`}
                   </p>
                 </div>
@@ -251,13 +229,7 @@ export default function ViewProjectsPage() {
           </div>
 
           {error && (
-            <div style={{
-              padding: '1rem',
-              backgroundColor: '#fee',
-              borderLeft: '4px solid #c00',
-              marginBottom: '1rem',
-              borderRadius: '2px',
-            }}>
+            <div className="vpErrorBox">
               <strong>Error:</strong> {error}
             </div>
           )}
@@ -265,25 +237,15 @@ export default function ViewProjectsPage() {
           {selectedProject && (
             <>
               {isLoadingAssets ? (
-                <div style={{
-                  padding: '3rem',
-                  textAlign: 'center',
-                  color: '#999',
-                }}>
-                  <div style={{fontSize: '2rem', marginBottom: '1rem'}}>⏳</div>
+                <div className="vpAssetsLoading">
+                  <div className="vpIconMd">⏳</div>
                   <p>Cargando imágenes...</p>
                 </div>
               ) : assets.length === 0 ? (
-                <div style={{
-                  padding: '3rem',
-                  textAlign: 'center',
-                  backgroundColor: '#f9f9f9',
-                  borderRadius: '4px',
-                  color: '#999',
-                }}>
-                  <div style={{fontSize: '3rem', marginBottom: '1rem'}}>🖼️</div>
+                <div className="vpAssetsEmpty">
+                  <div className="vpIconLg">🖼️</div>
                   <p>No hay imágenes en este proyecto aún.</p>
-                  <p style={{fontSize: '0.9rem', marginBottom: '1rem'}}>
+                  <p className="vpAssetsHint">
                     Crea nuevas imágenes en las secciones de generación.
                   </p>
                 </div>
@@ -291,28 +253,20 @@ export default function ViewProjectsPage() {
                 <div className="galleryGrid">
                   {assets.map((asset) => (
                     <article
-                      className="resultCard"
                       key={asset.fileName}
-                      style={{opacity: deleteInProgress === asset.fileName ? 0.5 : 1}}
+                      className={`resultCard ${deleteInProgress === asset.fileName ? 'vpCardDimmed' : ''}`}
                     >
                       <div className="resultImageWrap">
                         <img src={asset.publicUrl} alt={asset.fileName} />
                         {deleteInProgress === asset.fileName && (
-                          <div style={{
-                            position: 'absolute',
-                            inset: 0,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            backgroundColor: 'rgba(0,0,0,0.3)',
-                          }}>
-                            <span style={{color: 'white'}}>Eliminando...</span>
+                          <div className="vpDeletingOverlay">
+                            <span className="vpDeletingText">Eliminando...</span>
                           </div>
                         )}
                       </div>
                       <div className="resultMeta">
-                        <h3 style={{fontSize: '0.9rem', marginBottom: '0.25rem'}}>{asset.fileName}</h3>
-                        <p style={{fontSize: '0.75rem', color: '#999', marginBottom: '0.5rem'}}>
+                        <h3 className="vpAssetName">{asset.fileName}</h3>
+                        <p className="vpAssetType">
                           {asset.contentType}
                         </p>
                         <div className="assetActions">
