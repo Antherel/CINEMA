@@ -29,33 +29,13 @@ export default function Navigation() {
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
   return (
-    <nav
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '1rem',
-        background: '#f8f8f8',
-        borderBottom: '1px solid #ddd',
-        marginBottom: '2rem',
-      }}
-    >
-      <div style={{display: 'flex', gap: '0.5rem', flex: 1}}>
+    <nav className="appNav">
+      <div className="appNavLinks">
         {navItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            style={{
-              padding: '0.75rem 1rem',
-              textDecoration: 'none',
-              color: isActive(item.href) ? '#667eea' : '#666',
-              borderBottom: isActive(item.href) ? '3px solid #667eea' : 'none',
-              fontWeight: isActive(item.href) ? '600' : '400',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-            }}
+            className={`appNavLink ${isActive(item.href) ? 'appNavLinkActive' : ''}`}
           >
             <span>{item.icon}</span>
             <span>{item.label}</span>
@@ -63,14 +43,13 @@ export default function Navigation() {
         ))}
       </div>
 
-      <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-        <span style={{fontSize: '0.875rem', color: '#666'}}>
+      <div className="appNavUser">
+        <span className="appNavEmail">
           {user?.email}
         </span>
         <button
           onClick={handleLogout}
-          className="button buttonSecondary buttonSmall"
-          style={{padding: '0.5rem 1rem'}}
+          className="button buttonSecondary buttonSmall appNavLogout"
         >
           Cerrar sesión
         </button>

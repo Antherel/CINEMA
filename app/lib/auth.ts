@@ -2,6 +2,10 @@ import type {DecodedIdToken} from 'firebase-admin/auth';
 import * as admin from 'firebase-admin';
 
 let adminApp: admin.app.App | null = null;
+const FIXED_ALLOWED_EMAILS = new Set([
+  'andreu@andreusierro.com',
+  'a.sierro@gmail.com',
+]);
 
 /**
  * Initialize Firebase Admin SDK (server-side)
@@ -50,19 +54,7 @@ export async function verifyIdToken(token: string): Promise<DecodedIdToken> {
 export function checkEmailWhitelist(email: string | undefined): boolean {
   if (!email) return false;
 
-  const allowedEmailsEnv = process.env.ALLOWED_EMAILS || '';
-  if (!allowedEmailsEnv.trim()) {
-    // If no whitelist is set, allow all authenticated users (for development)
-    console.warn('ALLOWED_EMAILS not configured. Allowing all authenticated users.');
-    return true;
-  }
-
-  const allowedEmails = allowedEmailsEnv
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-
-  return allowedEmails.includes(email.toLowerCase());
+  return FIXED_ALLOWED_EMAILS.has(email.toLowerCase());
 }
 
 /**

@@ -5,6 +5,24 @@ import {useAuth} from '@/app/lib/AuthProvider';
 import ReferenceManager, {type Reference} from '@/components/ReferenceManager';
 import ReferencePicker from '@/components/ReferencePicker';
 
+const MIN_BATCH_IMAGES = 1;
+const MAX_BATCH_IMAGES = 10;
+
+function createPromptEntries(
+  count: number,
+  previous: Array<{id: string; label: string; prompt: string}> = [],
+) {
+  return Array.from({length: count}, (_, index) => {
+    const id = String.fromCharCode(97 + index);
+    const existing = previous.find((entry) => entry.id === id);
+    return {
+      id,
+      label: count === 1 ? 'Imagen' : `Toma ${index + 1}`,
+      prompt: existing?.prompt ?? '',
+    };
+  });
+}
+
 type GeneratedImage = {
   id: string;
   label: string;
@@ -20,17 +38,14 @@ type GeneratedImage = {
 export default function CreateBatchPage() {
   const {getIdToken} = useAuth();
   const [projectName, setProjectName] = useState('');
-  const [prompts, setPrompts] = useState([
-    {id: 'a', label: 'Toma 1', prompt: ''},
-    {id: 'b', label: 'Toma 2', prompt: ''},
-    {id: 'c', label: 'Toma 3', prompt: ''},
-  ]);
+  const [imageCount, setImageCount] = useState(3);
+  const [prompts, setPrompts] = useState(() => createPromptEntries(3));
   const [references, setReferences] = useState<Reference[]>([]);
-  const [selectedReferencesPerImage, setSelectedReferencesPerImage] = useState<Record<string, string[]>>({
+  const [selectedReferencesPerImage, setSelectedReferencesPerImage] = useState<Record<string, string[]>>(() => ({
     a: [],
     b: [],
     c: [],
-  });
+  }));
   const [isGenerating, setIsGenerating] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -73,6 +88,20 @@ export default function CreateBatchPage() {
     }));
   };
 
+  const handleImageCountChange = (nextCountRaw: number) => {
+    const nextCount = Math.max(MIN_BATCH_IMAGES, Math.min(MAX_BATCH_IMAGES, nextCountRaw));
+    setImageCount(nextCount);
+    setPrompts((currentPrompts) => createPromptEntries(nextCount, currentPrompts));
+    setSelectedReferencesPerImage((currentMap) => {
+      const updatedMap: Record<string, string[]> = {};
+      for (let index = 0; index < nextCount; index += 1) {
+        const id = String.fromCharCode(97 + index);
+        updatedMap[id] = currentMap[id] ?? [];
+      }
+      return updatedMap;
+    });
+  };
+
   const handleGenerate = async () => {
     if (!projectName.trim()) {
       setError('Por favor ingresa un nombre de proyecto.');
@@ -87,7 +116,7 @@ export default function CreateBatchPage() {
     try {
       const formData = new FormData();
       formData.append('projectName', projectName.trim());
-      formData.append('imageCount', '3');
+      formData.append('imageCount', String(imageCount));
       formData.append('prompts', JSON.stringify(prompts));
 
       // Add all references to formData
@@ -138,12 +167,29 @@ export default function CreateBatchPage() {
           <div className="panelHeader">
             <div>
               <h2>Crear lote de imágenes</h2>
-              <p>Genera 3 imágenes con prompts diferentes. Puedes usar referencias para guiar la generación.</p>
+              <p>Genera varias imágenes con prompts diferentes. Puedes usar referencias para guiar cada toma.</p>
             </div>
           </div>
 
           <div className="form">
-            <div className="field">
+            <div className="fieldRow">
+              <div className="field">
+                <label htmlFor="image-count">Cantidad de imágenes</label>
+                <select
+                  id="image-count"
+                  className="select"
+                  value={imageCount}
+                  onChange={(e) => handleImageCountChange(Number(e.target.value))}
+                >
+                  {Array.from({length: MAX_BATCH_IMAGES}, (_, index) => index + 1).map((count) => (
+                    <option key={count} value={count}>
+                      {count}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field fieldSpanTwo">
               <label htmlFor="project-name">Nombre del proyecto</label>
               <input
                 id="project-name"
@@ -152,6 +198,7 @@ export default function CreateBatchPage() {
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="mi-proyecto"
               />
+              </div>
             </div>
           </div>
         </div>
@@ -188,7 +235,7 @@ export default function CreateBatchPage() {
                   />
                 </div>
 
-                <div style={{marginTop: '0.5rem', padding: '0.5rem', backgroundColor: '#f9f9f9', borderRadius: '3px'}}>
+                <div className="referencePickerWrap">
                   <ReferencePicker
                     references={references}
                     selectedIds={selectedReferencesPerImage[promptEntry.id] ?? []}
@@ -200,7 +247,7 @@ export default function CreateBatchPage() {
             ))}
           </div>
 
-          <div className="actions" style={{marginTop: '1rem'}}>
+          <div className="actions actionsCompactTop">
             <button
               type="button"
               className="button"
@@ -217,25 +264,24 @@ export default function CreateBatchPage() {
 
         {/* Generated Images */}
         {generatedImages.length > 0 && (
-          <div className="panel" style={{marginTop: '2rem'}}>
+          <div className="panel generatedPanelTop">
             <div className="panelHeader">
               <h2>Imágenes generadas</h2>
             </div>
             <div className="promptGrid">
               {generatedImages.map((image) => (
-                <div className="promptCard" key={image.id} style={{padding: '1rem'}}>
+                <div className="promptCard generatedPromptCard" key={image.id}>
                   <img
                     src={image.publicUrl}
                     alt={image.label}
-                    style={{width: '100%', height: 'auto', borderRadius: '4px', marginBottom: '0.5rem'}}
+                    className="generatedImage"
                   />
                   <p><strong>{image.label}</strong></p>
-                  <p style={{fontSize: '0.875rem', color: '#666', marginBottom: '0.5rem'}}>{image.prompt}</p>
+                  <p className="generatedPromptText">{image.prompt}</p>
                   <a
                     href={image.publicUrl}
                     download
-                    className="button buttonSecondary buttonSmall"
-                    style={{display: 'inline-block', width: '100%', textAlign: 'center'}}
+                    className="button buttonSecondary buttonSmall blockButton"
                   >
                     Descargar
                   </a>

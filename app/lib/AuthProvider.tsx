@@ -42,6 +42,12 @@ async function getConfig(): Promise<Record<string, string>> {
 // Initialize Firebase (will be called lazily)
 let firebaseApp: any = null;
 let auth: any = null;
+const ALLOWED_EMAILS = new Set(['andreu@andreusierro.com', 'a.sierro@gmail.com']);
+
+function isAllowedEmail(email: string | undefined): boolean {
+  if (!email) return false;
+  return ALLOWED_EMAILS.has(email.toLowerCase());
+}
 
 async function initializeFirebase() {
   if (firebaseApp) return {firebaseApp, auth};
@@ -114,7 +120,13 @@ export function AuthProvider({children}: {children: ReactNode}) {
       setError(null);
       const {auth: firebaseAuth} = await initializeFirebase();
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(firebaseAuth, provider);
+      const credential = await signInWithPopup(firebaseAuth, provider);
+      if (!isAllowedEmail(credential.user.email ?? undefined)) {
+        await signOut(firebaseAuth);
+        const unauthorizedError = new Error('Esta cuenta no esta autorizada para acceder.');
+        setError(unauthorizedError.message);
+        throw unauthorizedError;
+      }
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to sign in';

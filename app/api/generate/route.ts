@@ -22,6 +22,7 @@ const VALIDATION = {
   MAX_PROMPT_LENGTH: 2000,
   MAX_GENERAL_PROMPT_LENGTH: 1000,
   MAX_PROJECT_NAME_LENGTH: 100,
+  MAX_BATCH_IMAGES: 10,
   ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
 };
 
@@ -203,7 +204,13 @@ export async function POST(request: NextRequest) {
     const generalPrompt = String(formData.get('generalPrompt') ?? '').trim();
     const aspectRatio = String(formData.get('aspectRatio') ?? '1:1');
     const imageSize = String(formData.get('imageSize') ?? '1K');
-    const imageCount = Math.max(1, Math.min(3, parseInt(String(formData.get('imageCount') ?? '3')))) || 3;
+    const imageCount = Math.max(
+      1,
+      Math.min(
+        VALIDATION.MAX_BATCH_IMAGES,
+        parseInt(String(formData.get('imageCount') ?? '3')),
+      ),
+    ) || 3;
     let prompts = parsePrompts(formData.get('prompts'));
     const referenceFile = formData.get('reference');
 

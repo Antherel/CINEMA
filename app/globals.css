@@ -56,21 +56,21 @@ textarea {
   position: relative;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 32px 20px 48px;
+  padding: 24px 16px 36px;
 }
 
 .hero {
   display: grid;
-  gap: 18px;
+  gap: 14px;
   grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
   align-items: start;
-  margin-bottom: 22px;
+  margin-bottom: 16px;
 }
 
 .masthead {
-  padding: 28px;
+  padding: 22px;
   border: 1px solid var(--panel-border);
-  border-radius: 30px;
+  border-radius: 24px;
   background: linear-gradient(180deg, rgba(13, 24, 43, 0.96), rgba(9, 18, 31, 0.88));
   box-shadow: var(--shadow);
 }
@@ -85,7 +85,7 @@ textarea {
 
 .title {
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: clamp(2.2rem, 4.2vw, 4.9rem);
+  font-size: clamp(1.8rem, 3.6vw, 4rem);
   line-height: 0.95;
   margin: 0 0 14px;
   max-width: 12ch;
@@ -94,14 +94,14 @@ textarea {
 .lede {
   max-width: 68ch;
   color: var(--muted);
-  font-size: 1.02rem;
+  font-size: 0.95rem;
   line-height: 1.6;
   margin: 0;
 }
 
 .statusCard {
-  padding: 24px;
-  border-radius: 28px;
+  padding: 18px;
+  border-radius: 22px;
   border: 1px solid var(--panel-border);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
   box-shadow: var(--shadow);
@@ -111,8 +111,8 @@ textarea {
 .panel h2,
 .gallery h2 {
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 1.25rem;
-  margin: 0 0 12px;
+  font-size: 1.1rem;
+  margin: 0 0 9px;
 }
 
 .statusRow {
@@ -124,8 +124,8 @@ textarea {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px;
-  border-radius: 18px;
+  padding: 10px 12px;
+  border-radius: 14px;
   background: rgba(7, 13, 23, 0.55);
   border: 1px solid rgba(255, 255, 255, 0.07);
   color: var(--muted);
@@ -138,24 +138,24 @@ textarea {
 
 .grid {
   display: grid;
-  gap: 18px;
+  gap: 14px;
   grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
 }
 
 .panel {
-  border-radius: 28px;
+  border-radius: 22px;
   border: 1px solid var(--panel-border);
   background: var(--panel);
   box-shadow: var(--shadow);
-  padding: 22px;
+  padding: 16px;
 }
 
 .panelHeader {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   align-items: flex-start;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .panelHeader p {
@@ -165,7 +165,7 @@ textarea {
 
 .form {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .fieldRow {
@@ -176,7 +176,7 @@ textarea {
 
 .field {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .checkRow {
@@ -205,23 +205,23 @@ textarea {
 
 .field label {
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 0.88rem;
 }
 
 .input,
 .textarea,
 .select {
   width: 100%;
-  border-radius: 18px;
+  border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(3, 8, 16, 0.65);
   color: var(--text);
-  padding: 14px 16px;
+  padding: 10px 12px;
   outline: none;
 }
 
 .textarea {
-  min-height: 132px;
+  min-height: 110px;
   resize: vertical;
 }
 
@@ -238,28 +238,28 @@ textarea {
 }
 
 .promptCard {
-  padding: 16px;
-  border-radius: 20px;
+  padding: 12px;
+  border-radius: 16px;
   background: rgba(3, 8, 16, 0.36);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .promptGrid {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
 }
 
 .button {
   border: 0;
   border-radius: 999px;
-  padding: 13px 18px;
+  padding: 10px 14px;
   cursor: pointer;
   color: #07111f;
   background: linear-gradient(135deg, var(--accent), #ffffff);
@@ -309,9 +309,9 @@ textarea {
 }
 
 .gallery {
-  margin-top: 18px;
-  padding: 22px;
-  border-radius: 28px;
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 22px;
   border: 1px solid var(--panel-border);
   background: rgba(8, 15, 28, 0.9);
   box-shadow: var(--shadow);
@@ -319,12 +319,12 @@ textarea {
 
 .galleryGrid {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .resultCard {
-  border-radius: 22px;
+  border-radius: 16px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
@@ -345,18 +345,18 @@ textarea {
 }
 
 .resultMeta {
-  padding: 14px;
+  padding: 10px;
 }
 
 .resultMeta h3 {
-  font-size: 0.98rem;
-  margin: 0 0 10px;
+  font-size: 0.9rem;
+  margin: 0 0 8px;
 }
 
 .resultMeta p {
   margin: 0;
   color: var(--muted);
-  font-size: 0.92rem;
+  font-size: 0.84rem;
   line-height: 1.45;
   word-break: break-word;
 }
@@ -369,22 +369,184 @@ textarea {
 .assetActions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 14px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .buttonSmall {
-  padding: 10px 14px;
-  font-size: 0.88rem;
+  padding: 8px 11px;
+  font-size: 0.82rem;
 }
 
 .emptyState {
-  margin-top: 16px;
-  padding: 18px;
-  border-radius: 20px;
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 16px;
   border: 1px dashed rgba(255, 255, 255, 0.14);
   color: var(--muted);
   background: rgba(3, 8, 16, 0.24);
+}
+
+.centerLoad {
+  padding: 2rem;
+  text-align: center;
+}
+
+.appNav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0.95rem;
+  background: linear-gradient(180deg, #0a1321, #08101d);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 1.25rem;
+}
+
+.appNavLinks {
+  display: flex;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+.appNavLink {
+  padding: 0.55rem 0.8rem;
+  text-decoration: none;
+  color: #c9d5eb;
+  border-bottom: 2px solid transparent;
+  font-weight: 400;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.92rem;
+}
+
+.appNavLinkActive {
+  color: #8dd6ff;
+  border-bottom-color: #8dd6ff;
+  font-weight: 600;
+}
+
+.appNavUser {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.appNavEmail {
+  font-size: 0.82rem;
+  color: #9eb0cf;
+}
+
+.appNavLogout {
+  padding: 0.4rem 0.75rem;
+}
+
+.fieldSpanTwo {
+  grid-column: span 2;
+}
+
+.referencePickerWrap {
+  margin-top: 0.35rem;
+  padding: 0.55rem;
+  background-color: rgba(3, 8, 16, 0.5);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.actionsCompactTop {
+  margin-top: 0.5rem;
+}
+
+.generatedPanelTop {
+  margin-top: 0.7rem;
+}
+
+.generatedPromptCard {
+  padding: 0.6rem;
+}
+
+.generatedImage {
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin-bottom: 0.35rem;
+}
+
+.generatedPromptText {
+  font-size: 0.78rem;
+  color: #9eb0cf;
+  margin-bottom: 0.35rem;
+}
+
+.blockButton {
+  display: inline-block;
+  width: 100%;
+  text-align: center;
+}
+
+.loginShell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.loginCard {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 3rem;
+  max-width: 500px;
+  width: 100%;
+}
+
+.loginTitle {
+  margin-bottom: 0.5rem;
+  text-align: center;
+  color: #1f2430;
+}
+
+.loginSubtitle {
+  text-align: center;
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.loginError {
+  background: #fee;
+  border: 1px solid #fcc;
+  border-radius: 4px;
+  color: #c33;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.loginButton {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.loginButton:hover {
+  background: #5568d3;
+}
+
+.loginFootnote {
+  text-align: center;
+  color: #999;
+  font-size: 0.875rem;
+  margin-top: 2rem;
 }
 
 @media (max-width: 1100px) {
@@ -398,15 +560,15 @@ textarea {
 
 @media (max-width: 700px) {
   .shell {
-    padding: 18px 14px 30px;
+    padding: 14px 10px 22px;
   }
 
   .masthead,
   .statusCard,
   .panel,
   .gallery {
-    border-radius: 22px;
-    padding: 18px;
+    border-radius: 18px;
+    padding: 14px;
   }
 
   .title {
