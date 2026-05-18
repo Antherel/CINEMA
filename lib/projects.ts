@@ -568,6 +568,59 @@ async function loadReferenceMetadataLocal(projectSlug: string): Promise<Referenc
   }
 }
 
+async function findLegacyReference(projectSlug: string): Promise<ProjectReference | null> {
+  const extensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+
+  if (isCloudMode()) {
+    const bucket = getBucket();
+    if (!bucket) {
+      return null;
+    }
+
+    for (const extension of extensions) {
+      const fileName = `referencia${extension}`;
+      const objectPath = `${getCloudProjectPrefix(projectSlug)}/${fileName}`;
+      const file = bucket.file(objectPath);
+      const [exists] = await file.exists();
+      if (exists) {
+        const [metadata] = await file.getMetadata();
+        return {
+          id: 'legacy-reference',
+          name: 'Referencia guardada',
+          description: 'Referencia heredada del proyecto.',
+          fileName,
+          contentType: metadata.contentType || mimeTypeFromFileName(fileName),
+          downloadUrl: buildReferenceDownloadUrl(projectSlug, fileName),
+        };
+      }
+    }
+
+    return null;
+  }
+
+  for (const extension of extensions) {
+    const fileName = `referencia${extension}`;
+    const filePath = path.join(getProjectPaths(projectSlug).rootDir, fileName);
+    try {
+      const stats = await fs.stat(filePath);
+      if (stats.isFile()) {
+        return {
+          id: 'legacy-reference',
+          name: 'Referencia guardada',
+          description: 'Referencia heredada del proyecto.',
+          fileName,
+          contentType: mimeTypeFromFileName(fileName),
+          downloadUrl: buildReferenceDownloadUrl(projectSlug, fileName),
+        };
+      }
+    } catch {
+      // keep searching
+    }
+  }
+
+  return null;
+}
+
 async function saveReferenceMetadataLocal(projectSlug: string, entries: ReferenceMetadataEntry[]) {
   const metaPath = buildReferenceMetadataPath(projectSlug);
   await fs.mkdir(path.dirname(metaPath), {recursive: true});
@@ -631,7 +684,7 @@ export async function listProjectReferences(projectSlug: string): Promise<Projec
       const [content] = await bucket.file(metaPath).download();
       const parsed = JSON.parse(content.toString('utf8')) as {entries?: ReferenceMetadataEntry[]};
       const entries = Array.isArray(parsed.entries) ? parsed.entries : [];
-      return entries.map((e) => ({
+      const mapped = entries.map((e) => ({
         id: e.id,
         name: e.name,
         description: e.description,
@@ -639,13 +692,19 @@ export async function listProjectReferences(projectSlug: string): Promise<Projec
         contentType: e.contentType,
         downloadUrl: buildReferenceDownloadUrl(safeSlug, e.fileName),
       }));
+      if (mapped.length > 0) {
+        return mapped;
+      }
     } catch {
-      return [];
+      // fall through to legacy lookup
     }
+
+    const legacy = await findLegacyReference(safeSlug);
+    return legacy ? [legacy] : [];
   }
 
   const entries = await loadReferenceMetadataLocal(safeSlug);
-  return entries.map((e) => ({
+  const mapped = entries.map((e) => ({
     id: e.id,
     name: e.name,
     description: e.description,
@@ -653,6 +712,12 @@ export async function listProjectReferences(projectSlug: string): Promise<Projec
     contentType: e.contentType,
     downloadUrl: buildReferenceDownloadUrl(safeSlug, e.fileName),
   }));
+  if (mapped.length > 0) {
+    return mapped;
+  }
+
+  const legacy = await findLegacyReference(safeSlug);
+  return legacy ? [legacy] : [];
 }
 
 export async function readProjectReference(projectSlug: string, fileName: string) {
