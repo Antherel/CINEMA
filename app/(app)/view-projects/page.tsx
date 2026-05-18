@@ -21,6 +21,7 @@ type AssetItem = {
   contentType: string;
   downloadUrl: string;
   updatedAt?: string;
+  prompt?: string;
 };
 
 /**
@@ -269,6 +270,9 @@ export default function ViewProjectsPage() {
                         <p className="vpAssetType">
                           {asset.contentType}
                         </p>
+                        {asset.prompt && (
+                          <p className="vpAssetPrompt">{asset.prompt}</p>
+                        )}
                         <div className="assetActions">
                           <a
                             href={asset.downloadUrl}

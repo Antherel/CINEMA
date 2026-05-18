@@ -456,6 +456,7 @@ export async function POST(request: NextRequest) {
         fileName,
         imageBytes,
         imagePart.inlineData.mimeType,
+        finalPrompt,
       );
 
       outputs.push({

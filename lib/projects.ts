@@ -25,6 +25,7 @@ export type ProjectAsset = StoredAsset & {
   contentType: string;
   downloadUrl: string;
   updatedAt?: string;
+  prompt?: string;
 };
 
 export type ProjectReference = {
@@ -179,6 +180,7 @@ async function uploadCloudAsset(
   objectPath: string,
   bytes: Buffer,
   contentType: string,
+  customMetadata?: Record<string, string>,
 ): Promise<StoredAsset> {
   const bucket = getBucket();
   if (!bucket) {
@@ -194,6 +196,7 @@ async function uploadCloudAsset(
       metadata: {
         metadata: {
           firebaseStorageDownloadTokens: token,
+          ...(customMetadata ?? {}),
         },
       },
     });
@@ -343,15 +346,30 @@ export async function saveGeneratedAsset(
   fileName: string,
   bytes: Buffer,
   contentType: string,
+  prompt?: string,
 ) {
   if (isCloudMode()) {
     const objectPath = `${getCloudProjectPrefix(projectName)}/assets_produccion/${fileName}`;
-    return uploadCloudAsset(objectPath, bytes, contentType);
+    return uploadCloudAsset(objectPath, bytes, contentType, prompt ? {prompt} : undefined);
   }
 
   const project = await ensureProjectStructure(projectName);
   const filePath = path.join(project.resultsDir, fileName);
   await fs.writeFile(filePath, bytes);
+
+   if (prompt) {
+    const metadataPath = path.join(project.rootDir, 'assets_metadata.json');
+    let existing: Record<string, {prompt?: string}> = {};
+    try {
+      const content = await fs.readFile(metadataPath, 'utf8');
+      existing = JSON.parse(content) as Record<string, {prompt?: string}>;
+    } catch {
+      existing = {};
+    }
+
+    existing[fileName] = {prompt};
+    await fs.writeFile(metadataPath, JSON.stringify(existing, null, 2), 'utf8');
+  }
 
   return {
     filePath,
@@ -368,11 +386,21 @@ async function readLocalAsset(projectSlug: string, fileName: string): Promise<Pr
   const safeName = safeAssetFileName(fileName);
   const project = getProjectPaths(projectSlug);
   const filePath = path.join(project.resultsDir, safeName);
+  const metadataPath = path.join(project.rootDir, 'assets_metadata.json');
 
   try {
     const stats = await fs.stat(filePath);
     if (!stats.isFile()) {
       return null;
+    }
+
+    let prompt: string | undefined;
+    try {
+      const metadataContent = await fs.readFile(metadataPath, 'utf8');
+      const metadata = JSON.parse(metadataContent) as Record<string, {prompt?: string}>;
+      prompt = metadata[safeName]?.prompt;
+    } catch {
+      prompt = undefined;
     }
 
     return {
@@ -383,6 +411,7 @@ async function readLocalAsset(projectSlug: string, fileName: string): Promise<Pr
       contentType: mimeTypeFromFileName(safeName),
       downloadUrl: buildAssetDownloadUrl(project.slug, safeName),
       updatedAt: stats.mtime.toISOString(),
+      prompt,
     };
   } catch {
     return null;
@@ -405,6 +434,7 @@ async function readCloudAsset(projectSlug: string, fileName: string): Promise<Pr
 
   const [metadata] = await file.getMetadata();
   const token = String(metadata.metadata?.firebaseStorageDownloadTokens ?? '').split(',')[0].trim();
+  const promptValue = metadata.metadata?.prompt;
 
   return {
     fileName: safeName,
@@ -417,6 +447,7 @@ async function readCloudAsset(projectSlug: string, fileName: string): Promise<Pr
     contentType: metadata.contentType || mimeTypeFromFileName(safeName),
     downloadUrl: buildAssetDownloadUrl(projectSlug, safeName),
     updatedAt: metadata.updated,
+    prompt: typeof promptValue === 'string' ? promptValue : undefined,
   };
 }
 
@@ -481,6 +512,7 @@ export async function deleteProjectAsset(projectSlug: string, fileName: string) 
 
   const project = getProjectPaths(safeSlug);
   const filePath = path.join(project.resultsDir, safeName);
+  const metadataPath = path.join(project.rootDir, 'assets_metadata.json');
 
   try {
     await fs.unlink(filePath);
@@ -488,6 +520,17 @@ export async function deleteProjectAsset(projectSlug: string, fileName: string) 
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
       throw error;
     }
+  }
+
+  try {
+    const metadataContent = await fs.readFile(metadataPath, 'utf8');
+    const metadata = JSON.parse(metadataContent) as Record<string, {prompt?: string}>;
+    if (safeName in metadata) {
+      delete metadata[safeName];
+      await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2), 'utf8');
+    }
+  } catch {
+    // Ignore missing metadata file.
   }
 }
 
