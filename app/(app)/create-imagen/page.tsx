@@ -5,6 +5,9 @@ import {useAuth} from '@/app/lib/AuthProvider';
 import ReferenceManager, {type Reference} from '@/components/ReferenceManager';
 import ReferencePicker from '@/components/ReferencePicker';
 
+const ASPECT_RATIO_OPTIONS = ['1:1', '16:9', '9:16', '4:3', '3:4'];
+const IMAGE_SIZE_OPTIONS = ['1K', '2K'];
+
 type ProjectItem = {
   displayName: string;
   slug: string;
@@ -47,6 +50,8 @@ export default function CreateImagePage() {
   const [generalPrompt, setGeneralPrompt] = useState('');
   const [whiteBackground, setWhiteBackground] = useState(false);
   const [realistic, setRealistic] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState('1:1');
+  const [imageSize, setImageSize] = useState('1K');
   const [promptPreview, setPromptPreview] = useState<string | null>(null);
 
   useEffect(() => {
@@ -179,6 +184,8 @@ export default function CreateImagePage() {
         {id: 'a', label: 'Imagen', prompt: prompt.trim()},
       ]));
       formData.append('generalPrompt', generalPrompt.trim());
+      formData.append('aspectRatio', aspectRatio);
+      formData.append('imageSize', imageSize);
       if (whiteBackground) formData.append('whiteBackground', '1');
       if (realistic) formData.append('realistic', '1');
 
@@ -314,6 +321,36 @@ export default function CreateImagePage() {
                 />
                 Realista
               </label>
+            </div>
+
+            <div className="fieldRow">
+              <div className="field">
+                <label htmlFor="image-aspect-ratio">Proporción</label>
+                <select
+                  id="image-aspect-ratio"
+                  className="select"
+                  value={aspectRatio}
+                  onChange={(e) => setAspectRatio(e.target.value)}
+                >
+                  {ASPECT_RATIO_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label htmlFor="image-image-size">Resolución</label>
+                <select
+                  id="image-image-size"
+                  className="select"
+                  value={imageSize}
+                  onChange={(e) => setImageSize(e.target.value)}
+                >
+                  {IMAGE_SIZE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="actions">

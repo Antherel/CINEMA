@@ -7,6 +7,8 @@ import ReferencePicker from '@/components/ReferencePicker';
 
 const MIN_BATCH_IMAGES = 1;
 const MAX_BATCH_IMAGES = 10;
+const ASPECT_RATIO_OPTIONS = ['1:1', '16:9', '9:16', '4:3', '3:4'];
+const IMAGE_SIZE_OPTIONS = ['1K', '2K'];
 
 function createPromptEntries(
   count: number,
@@ -70,6 +72,8 @@ export default function CreateBatchPage() {
   const [generalPrompt, setGeneralPrompt] = useState('');
   const [whiteBackground, setWhiteBackground] = useState(false);
   const [realistic, setRealistic] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState('1:1');
+  const [imageSize, setImageSize] = useState('1K');
   const [promptPreview, setPromptPreview] = useState<string[] | null>(null);
 
   useEffect(() => {
@@ -244,6 +248,8 @@ export default function CreateBatchPage() {
       formData.append('imageCount', String(imageCount));
       formData.append('prompts', JSON.stringify(prompts));
       formData.append('generalPrompt', generalPrompt.trim());
+      formData.append('aspectRatio', aspectRatio);
+      formData.append('imageSize', imageSize);
       if (whiteBackground) formData.append('whiteBackground', '1');
       if (realistic) formData.append('realistic', '1');
 
@@ -384,6 +390,36 @@ export default function CreateBatchPage() {
                 />
                 Realista
               </label>
+            </div>
+
+            <div className="fieldRow">
+              <div className="field">
+                <label htmlFor="batch-aspect-ratio">Proporción</label>
+                <select
+                  id="batch-aspect-ratio"
+                  className="select"
+                  value={aspectRatio}
+                  onChange={(e) => setAspectRatio(e.target.value)}
+                >
+                  {ASPECT_RATIO_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label htmlFor="batch-image-size">Resolución</label>
+                <select
+                  id="batch-image-size"
+                  className="select"
+                  value={imageSize}
+                  onChange={(e) => setImageSize(e.target.value)}
+                >
+                  {IMAGE_SIZE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         </div>
