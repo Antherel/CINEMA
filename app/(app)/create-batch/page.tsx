@@ -27,8 +27,17 @@ type GeneratedImage = {
   id: string;
   label: string;
   prompt: string;
+  usedReferences?: string[];
+  estimatedCostUsd?: number;
   publicUrl: string;
   fileName: string;
+};
+
+type PricingSummary = {
+  currency: string;
+  estimatedCostPerImageUsd: number;
+  estimatedTotalCostUsd: number;
+  note?: string;
 };
 
 /**
@@ -50,6 +59,7 @@ export default function CreateBatchPage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
+  const [pricing, setPricing] = useState<PricingSummary | null>(null);
 
   const handleUpdatePrompt = (index: number, value: string) => {
     const updated = [...prompts];
@@ -112,6 +122,7 @@ export default function CreateBatchPage() {
     setError('');
     setMessage('Generando lote...');
     setGeneratedImages([]);
+    setPricing(null);
 
     try {
       const formData = new FormData();
@@ -123,6 +134,7 @@ export default function CreateBatchPage() {
       references.forEach((ref) => {
         formData.append(`reference_${ref.id}`, ref.file);
         formData.append(`referenceName_${ref.id}`, ref.name);
+        formData.append(`referenceDescription_${ref.id}`, ref.description ?? '');
       });
 
       // Add reference selection mapping
@@ -147,7 +159,11 @@ export default function CreateBatchPage() {
       const data = (await response.json()) as any;
       if (data.outputs && Array.isArray(data.outputs)) {
         setGeneratedImages(data.outputs);
-        setMessage(`Lote generado correctamente: ${data.outputs.length} imágenes en ${data.project.displayName}.`);
+        setPricing(data.pricing ?? null);
+        const totalCost = typeof data?.pricing?.estimatedTotalCostUsd === 'number'
+          ? ` Coste estimado: $${data.pricing.estimatedTotalCostUsd.toFixed(4)}.`
+          : '';
+        setMessage(`Lote generado correctamente: ${data.outputs.length} imágenes en ${data.project.displayName}.${totalCost}`);
       } else {
         setError('No se generaron imágenes.');
         setMessage('');
@@ -260,6 +276,11 @@ export default function CreateBatchPage() {
 
           {message && <p className="message">{message}</p>}
           {error && <p className="message error">{error}</p>}
+          {pricing && (
+            <p className="message">
+              Coste estimado por imagen: ${pricing.estimatedCostPerImageUsd.toFixed(4)} {pricing.currency}. Total estimado: ${pricing.estimatedTotalCostUsd.toFixed(4)} {pricing.currency}.
+            </p>
+          )}
         </div>
 
         {/* Generated Images */}
@@ -278,6 +299,16 @@ export default function CreateBatchPage() {
                   />
                   <p><strong>{image.label}</strong></p>
                   <p className="generatedPromptText">{image.prompt}</p>
+                  {typeof image.estimatedCostUsd === 'number' && (
+                    <p className="generatedPromptText">
+                      Coste estimado: ${image.estimatedCostUsd.toFixed(4)} USD
+                    </p>
+                  )}
+                  {Array.isArray(image.usedReferences) && image.usedReferences.length > 0 && (
+                    <p className="generatedPromptText">
+                      Referencias usadas: {image.usedReferences.join(', ')}
+                    </p>
+                  )}
                   <a
                     href={image.publicUrl}
                     download

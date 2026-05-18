@@ -549,6 +549,26 @@ textarea {
   margin-top: 2rem;
 }
 
+.singleGeneratedPanel {
+  margin-top: 2rem;
+  padding: 1rem;
+  background-color: rgba(3, 8, 16, 0.5);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.singleGeneratedImage {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.singleGeneratedDownload {
+  display: inline-block;
+  margin-top: 1rem;
+}
+
 @media (max-width: 1100px) {
   .hero,
   .grid,

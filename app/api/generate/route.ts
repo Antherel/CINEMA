@@ -32,6 +32,12 @@ type PromptEntry = {
   prompt: string;
 };
 
+type ReferenceMeta = {
+  file: File;
+  name: string;
+  description?: string;
+};
+
 function resolveApiKey(): string {
   return (
     process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim() || ''
@@ -50,6 +56,36 @@ function buildPrompt(generalPrompt: string, prompt: string, label: string) {
   }
 
   return segments.join('\n\n');
+}
+
+function buildReferenceInstruction(selectedReferences: ReferenceMeta[]): string {
+  if (selectedReferences.length === 0) {
+    return '';
+  }
+
+  const lines = selectedReferences.map((reference, index) => {
+    const description = reference.description?.trim();
+    return description
+      ? `${index + 1}. ${reference.name}: ${description}`
+      : `${index + 1}. ${reference.name}`;
+  });
+
+  return [
+    'Usa las imagenes de referencia adjuntas como guia visual obligatoria.',
+    'Mantén coherencia de estilo, iluminacion, materialidad y composicion con estas referencias:',
+    ...lines,
+  ].join('\n');
+}
+
+function estimateImageCostUsd(imageSize: string): number {
+  const oneK = Number(process.env.ESTIMATED_COST_1K_USD ?? '0.04');
+  const twoK = Number(process.env.ESTIMATED_COST_2K_USD ?? '0.08');
+
+  if (imageSize === '2K') {
+    return Number.isFinite(twoK) ? twoK : 0.08;
+  }
+
+  return Number.isFinite(oneK) ? oneK : 0.04;
 }
 
 function parsePrompts(rawValue: FormDataEntryValue | null): PromptEntry[] {
@@ -250,7 +286,7 @@ export async function POST(request: NextRequest) {
     const preparedProject = await ensureProjectStructure(projectName);
     
     // Parse and validate multiple references
-    const referencesData: Map<string, {file: File; name: string}> = new Map();
+    const referencesData: Map<string, ReferenceMeta> = new Map();
     const referenceNames: Map<string, string> = new Map();
     
     // Collect all files starting with 'reference_'
@@ -258,8 +294,14 @@ export async function POST(request: NextRequest) {
       if (key.startsWith('reference_') && value instanceof File) {
         const refId = key.replace('reference_', '');
         const refNameKey = `referenceName_${refId}`;
+        const refDescriptionKey = `referenceDescription_${refId}`;
         const refName = String(formData.get(refNameKey) ?? `Ref-${refId}`).trim();
-        referencesData.set(refId, {file: value, name: refName});
+        const refDescription = String(formData.get(refDescriptionKey) ?? '').trim();
+        referencesData.set(refId, {
+          file: value,
+          name: refName,
+          description: refDescription || undefined,
+        });
         referenceNames.set(refId, refName);
       }
     }
@@ -318,18 +360,30 @@ export async function POST(request: NextRequest) {
       id: string;
       label: string;
       prompt: string;
+      usedReferences: string[];
+      estimatedCostUsd: number;
       fileName: string;
       filePath: string;
       publicUrl: string;
     }> = [];
 
+    const estimatedCostPerImageUsd = estimateImageCostUsd(imageSize);
+
     for (const [index, promptEntry] of prompts.entries()) {
       const label = promptEntry.label || `Imagen ${index + 1}`;
-      const prompt = buildPrompt(generalPrompt, promptEntry.prompt, label);
-      const contents = [createPartFromText(prompt)];
+      const basePrompt = buildPrompt(generalPrompt, promptEntry.prompt, label);
+      const selectedRefIdsRaw = imageReferencesMap[promptEntry.id] ?? [];
+      const selectedReferences = selectedRefIdsRaw
+        .map((refId) => referencesData.get(refId))
+        .filter((reference): reference is ReferenceMeta => Boolean(reference));
+      const referenceInstruction = buildReferenceInstruction(selectedReferences);
+      const finalPrompt = referenceInstruction
+        ? `${referenceInstruction}\n\nPrompt principal:\n${basePrompt}`
+        : basePrompt;
+      const contents = [createPartFromText(finalPrompt)];
 
       // Add selected references for this image
-      const selectedRefIds = imageReferencesMap[promptEntry.id] ?? [];
+      const selectedRefIds = selectedRefIdsRaw;
       for (const refId of selectedRefIds) {
         const refPart = referencePartsMap.get(refId);
         if (refPart) {
@@ -366,7 +420,9 @@ export async function POST(request: NextRequest) {
       outputs.push({
         id: promptEntry.id,
         label,
-        prompt,
+        prompt: finalPrompt,
+        usedReferences: selectedReferences.map((reference) => reference.name),
+        estimatedCostUsd: estimatedCostPerImageUsd,
         fileName,
         filePath: savedAsset.filePath,
         publicUrl: savedAsset.publicUrl,
@@ -380,6 +436,12 @@ export async function POST(request: NextRequest) {
         rootDir: preparedProject.rootDir,
         resultsDir: preparedProject.resultsDir,
         publicUrl: preparedProject.publicUrl,
+      },
+      pricing: {
+        currency: 'USD',
+        estimatedCostPerImageUsd,
+        estimatedTotalCostUsd: Number((estimatedCostPerImageUsd * outputs.length).toFixed(4)),
+        note: 'Estimacion aproximada configurable con ESTIMATED_COST_1K_USD y ESTIMATED_COST_2K_USD.',
       },
       outputs,
     });

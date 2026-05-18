@@ -9,8 +9,17 @@ type GeneratedImage = {
   id: string;
   label: string;
   prompt: string;
+  usedReferences?: string[];
+  estimatedCostUsd?: number;
   publicUrl: string;
   fileName: string;
+};
+
+type PricingSummary = {
+  currency: string;
+  estimatedCostPerImageUsd: number;
+  estimatedTotalCostUsd: number;
+  note?: string;
 };
 
 /**
@@ -27,6 +36,7 @@ export default function CreateImagePage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
+  const [pricing, setPricing] = useState<PricingSummary | null>(null);
 
   const handleAddReference = (ref: Reference) => {
     setReferences([...references, ref]);
@@ -60,6 +70,7 @@ export default function CreateImagePage() {
     setError('');
     setMessage('Generando imagen...');
     setGeneratedImage(null);
+    setPricing(null);
 
     try {
       const formData = new FormData();
@@ -73,6 +84,7 @@ export default function CreateImagePage() {
       references.forEach((ref) => {
         formData.append(`reference_${ref.id}`, ref.file);
         formData.append(`referenceName_${ref.id}`, ref.name);
+        formData.append(`referenceDescription_${ref.id}`, ref.description ?? '');
       });
 
       // Add reference selection mapping for this single image
@@ -97,7 +109,11 @@ export default function CreateImagePage() {
       const data = (await response.json()) as any;
       if (data.outputs && data.outputs.length > 0) {
         setGeneratedImage(data.outputs[0]);
-        setMessage(`Imagen generada correctamente en ${data.project.displayName}.`);
+        setPricing(data.pricing ?? null);
+        const imageCost = typeof data?.pricing?.estimatedCostPerImageUsd === 'number'
+          ? ` Coste estimado: $${data.pricing.estimatedCostPerImageUsd.toFixed(4)}.`
+          : '';
+        setMessage(`Imagen generada correctamente en ${data.project.displayName}.${imageCost}`);
         setPrompt('');
       } else {
         setError('No se generó ninguna imagen.');
@@ -158,6 +174,11 @@ export default function CreateImagePage() {
 
             {message && <p className="message">{message}</p>}
             {error && <p className="message error">{error}</p>}
+            {pricing && (
+              <p className="message">
+                Coste estimado: ${pricing.estimatedCostPerImageUsd.toFixed(4)} {pricing.currency} por imagen.
+              </p>
+            )}
           </div>
         </div>
 
@@ -189,19 +210,24 @@ export default function CreateImagePage() {
 
         {/* Generated Image */}
         {generatedImage && (
-          <div style={{marginTop: '2rem', padding: '1rem', backgroundColor: '#f9f9f9', borderRadius: '4px'}}>
+          <div className="singleGeneratedPanel">
             <h3>Imagen generada</h3>
             <img
               src={generatedImage.publicUrl}
               alt={generatedImage.label}
-              style={{maxWidth: '100%', height: 'auto', borderRadius: '4px', marginBottom: '1rem'}}
+              className="singleGeneratedImage"
             />
             <p><strong>Prompt:</strong> {generatedImage.prompt}</p>
+            {typeof generatedImage.estimatedCostUsd === 'number' && (
+              <p><strong>Coste estimado:</strong> ${generatedImage.estimatedCostUsd.toFixed(4)} USD</p>
+            )}
+            {Array.isArray(generatedImage.usedReferences) && generatedImage.usedReferences.length > 0 && (
+              <p><strong>Referencias usadas:</strong> {generatedImage.usedReferences.join(', ')}</p>
+            )}
             <a
               href={generatedImage.publicUrl}
               download
-              className="button buttonSecondary"
-              style={{display: 'inline-block', marginTop: '1rem'}}
+              className="button buttonSecondary singleGeneratedDownload"
             >
               Descargar
             </a>
