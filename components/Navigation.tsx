@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, {useState} from 'react';
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import {useAuth} from '@/app/lib/AuthProvider';
@@ -11,6 +11,7 @@ import {useAuth} from '@/app/lib/AuthProvider';
 export default function Navigation() {
   const pathname = usePathname();
   const {user, logout} = useAuth();
+  const [releaseInfo, setReleaseInfo] = useState('v1.0.0 - 18/05/2026 08:30');
 
   const handleLogout = async () => {
     try {
@@ -30,20 +31,31 @@ export default function Navigation() {
 
   return (
     <nav className="appNav">
-      <div className="appNavLinks">
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`appNavLink ${isActive(item.href) ? 'appNavLinkActive' : ''}`}
-          >
-            <span>{item.icon}</span>
-            <span>{item.label}</span>
-          </Link>
-        ))}
+      <div className="appNavMain">
+        <div className="appNavBrand">VIADEOCLIP MAKER</div>
+        <div className="appNavLinks">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`appNavLink ${isActive(item.href) ? 'appNavLinkActive' : ''}`}
+            >
+              <span>{item.icon}</span>
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </div>
       </div>
 
       <div className="appNavUser">
+        <input
+          type="text"
+          className="appNavVersionInput"
+          value={releaseInfo}
+          onChange={(e) => setReleaseInfo(e.target.value)}
+          aria-label="Versión y hora de publicación"
+          placeholder="vX.Y.Z - DD/MM/YYYY HH:mm"
+        />
         <span className="appNavEmail">
           {user?.email}
         </span>
