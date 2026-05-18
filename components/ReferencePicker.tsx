@@ -29,20 +29,20 @@ export default function ReferencePicker({
 
   if (references.length === 0) {
     return (
-      <div style={{fontSize: '0.875rem', color: '#999', padding: '0.5rem', fontStyle: 'italic'}}>
+      <div className="referencePickerEmpty">
         Sin referencias disponibles
       </div>
     );
   }
 
   return (
-    <div style={{fontSize: '0.875rem'}}>
-      <label style={{display: 'block', fontWeight: 'bold', marginBottom: '0.5rem'}}>
+    <div className="referencePicker">
+      <label className="referencePickerLabel">
         {label}
       </label>
-      <div style={{display: 'flex', flexDirection: 'column', gap: '0.25rem'}}>
+      <div className="referencePickerList">
         {references.map((ref) => (
-          <label key={ref.id} style={{display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer'}}>
+          <label key={ref.id} className="referencePickerItem">
             <input
               type="checkbox"
               checked={selectedIds.includes(ref.id)}

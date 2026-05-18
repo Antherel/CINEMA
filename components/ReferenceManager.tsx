@@ -56,7 +56,7 @@ export default function ReferenceManager({
   };
 
   return (
-    <div className="panel" style={{marginBottom: '1rem'}}>
+    <div className="panel referencePanel">
       <div className="panelHeader">
         <div>
           <h3>Gestor de referencias</h3>
@@ -66,8 +66,8 @@ export default function ReferenceManager({
 
       <div className="form">
         {/* Add new reference */}
-        <div style={{padding: '1rem', backgroundColor: '#f9f9f9', borderRadius: '4px', marginBottom: '1rem'}}>
-          <h4 style={{marginTop: 0}}>Añadir nueva referencia</h4>
+        <div className="referenceCreateCard">
+          <h4 className="referenceCreateTitle">Añadir nueva referencia</h4>
           
           <div className="fieldRow">
             <div className="field">
@@ -108,67 +108,40 @@ export default function ReferenceManager({
         {/* List of added references */}
         {references.length > 0 && (
           <div>
-            <h4>Referencias añadidas ({references.length})</h4>
-            <div style={{display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))'}}>
+            <h4 className="referenceListTitle">Referencias añadidas ({references.length})</h4>
+            <div className="referenceGrid">
               {references.map((ref) => (
-                <div
-                  key={ref.id}
-                  style={{
-                    padding: '1rem',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    backgroundColor: '#fff',
-                    position: 'relative',
-                  }}
-                >
+                <div key={ref.id} className="referenceCard">
                   <button
                     type="button"
                     onClick={() => onRemove(ref.id)}
-                    style={{
-                      position: 'absolute',
-                      top: '0.5rem',
-                      right: '0.5rem',
-                      background: '#ff4444',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '3px',
-                      width: '24px',
-                      height: '24px',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      padding: 0,
-                    }}
+                    className="referenceDelete"
                     title="Eliminar"
                   >
                     ✕
                   </button>
 
-                  <div style={{marginBottom: '0.5rem'}}>
-                    <strong style={{fontSize: '0.9rem', display: 'block', marginBottom: '0.25rem'}}>
+                  <div className="referenceMeta">
+                    <strong className="referenceName">
                       {ref.name}
                     </strong>
                     {ref.description && (
-                      <p style={{fontSize: '0.75rem', color: '#666', margin: 0, marginBottom: '0.25rem'}}>
+                      <p className="referenceDescription">
                         {ref.description}
                       </p>
                     )}
-                    <p style={{fontSize: '0.75rem', color: '#999', margin: 0}}>
+                    <p className="referenceFileName">
                       {ref.file.name}
                     </p>
                   </div>
 
-                  <div style={{display: 'flex', gap: '0.25rem'}}>
+                  <div className="referenceEditRow">
                     <input
                       type="text"
                       value={ref.name}
                       onChange={(e) => onUpdateName(ref.id, e.target.value)}
-                      style={{
-                        flex: 1,
-                        padding: '0.25rem',
-                        fontSize: '0.75rem',
-                        border: '1px solid #ddd',
-                        borderRadius: '2px',
-                      }}
+                      aria-label={`Editar nombre de referencia ${ref.name}`}
+                      className="referenceNameInput"
                     />
                   </div>
                 </div>
@@ -178,7 +151,7 @@ export default function ReferenceManager({
         )}
 
         {references.length === 0 && (
-          <p style={{color: '#999', fontStyle: 'italic', marginBottom: 0}}>
+          <p className="referenceEmpty">
             No hay referencias añadidas. Sube una imagen para empezar.
           </p>
         )}

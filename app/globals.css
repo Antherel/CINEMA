@@ -20,6 +20,7 @@ html,
 body {
   margin: 0;
   min-height: 100%;
+  font-size: 14px;
   background:
     radial-gradient(circle at top left, rgba(141, 214, 255, 0.18), transparent 33%),
     radial-gradient(circle at top right, rgba(243, 208, 122, 0.18), transparent 32%),
@@ -56,7 +57,7 @@ textarea {
   position: relative;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 24px 16px 36px;
+  padding: 18px 12px 26px;
 }
 
 .hero {
@@ -138,7 +139,7 @@ textarea {
 
 .grid {
   display: grid;
-  gap: 14px;
+  gap: 10px;
   grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
 }
 
@@ -147,7 +148,7 @@ textarea {
   border: 1px solid var(--panel-border);
   background: var(--panel);
   box-shadow: var(--shadow);
-  padding: 16px;
+  padding: 12px;
 }
 
 .panelHeader {
@@ -155,7 +156,7 @@ textarea {
   justify-content: space-between;
   gap: 12px;
   align-items: flex-start;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .panelHeader p {
@@ -165,12 +166,12 @@ textarea {
 
 .form {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .fieldRow {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
@@ -216,12 +217,12 @@ textarea {
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(3, 8, 16, 0.65);
   color: var(--text);
-  padding: 10px 12px;
+  padding: 8px 10px;
   outline: none;
 }
 
 .textarea {
-  min-height: 110px;
+  min-height: 90px;
   resize: vertical;
 }
 
@@ -238,7 +239,7 @@ textarea {
 }
 
 .promptCard {
-  padding: 12px;
+  padding: 10px;
   border-radius: 16px;
   background: rgba(3, 8, 16, 0.36);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -259,7 +260,7 @@ textarea {
 .button {
   border: 0;
   border-radius: 999px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   cursor: pointer;
   color: #07111f;
   background: linear-gradient(135deg, var(--accent), #ffffff);
@@ -374,8 +375,8 @@ textarea {
 }
 
 .buttonSmall {
-  padding: 8px 11px;
-  font-size: 0.82rem;
+  padding: 6px 9px;
+  font-size: 0.78rem;
 }
 
 .emptyState {
@@ -396,7 +397,7 @@ textarea {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 0.95rem;
+  padding: 0.55rem 0.75rem;
   background: linear-gradient(180deg, #0a1321, #08101d);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   margin-bottom: 1.25rem;
@@ -409,7 +410,7 @@ textarea {
 }
 
 .appNavLink {
-  padding: 0.55rem 0.8rem;
+  padding: 0.4rem 0.6rem;
   text-decoration: none;
   color: #c9d5eb;
   border-bottom: 2px solid transparent;
@@ -569,6 +570,131 @@ textarea {
   margin-top: 1rem;
 }
 
+.referencePanel {
+  margin-bottom: 0.7rem;
+}
+
+.referenceCreateCard {
+  padding: 0.7rem;
+  background-color: rgba(3, 8, 16, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  margin-bottom: 0.7rem;
+}
+
+.referenceCreateTitle,
+.referenceListTitle {
+  margin: 0 0 0.55rem;
+  font-size: 0.9rem;
+}
+
+.referenceGrid {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+}
+
+.referenceCard {
+  padding: 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background-color: rgba(3, 8, 16, 0.55);
+  position: relative;
+}
+
+.referenceDelete {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  background: #cc3a3a;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0;
+  line-height: 1;
+}
+
+.referenceMeta {
+  margin-bottom: 0.4rem;
+}
+
+.referenceName {
+  font-size: 0.8rem;
+  display: block;
+  margin-bottom: 0.15rem;
+}
+
+.referenceDescription,
+.referenceFileName {
+  font-size: 0.7rem;
+  margin: 0;
+}
+
+.referenceDescription {
+  color: #b7c6e1;
+  margin-bottom: 0.2rem;
+}
+
+.referenceFileName {
+  color: #879abc;
+}
+
+.referenceEditRow {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.referenceNameInput {
+  flex: 1;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+  background: rgba(3, 8, 16, 0.65);
+  color: var(--text);
+}
+
+.referenceEmpty {
+  color: #879abc;
+  font-style: italic;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.referencePicker {
+  font-size: 0.8rem;
+}
+
+.referencePickerLabel {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.referencePickerList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.referencePickerItem {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+.referencePickerEmpty {
+  font-size: 0.8rem;
+  color: #879abc;
+  padding: 0.35rem;
+  font-style: italic;
+}
+
 @media (max-width: 1100px) {
   .hero,
   .grid,
@@ -580,7 +706,7 @@ textarea {
 
 @media (max-width: 700px) {
   .shell {
-    padding: 14px 10px 22px;
+    padding: 10px 8px 16px;
   }
 
   .masthead,
