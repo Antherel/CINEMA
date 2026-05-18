@@ -180,6 +180,18 @@ textarea {
   gap: 6px;
 }
 
+.formSectionTitle {
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.formSectionHint {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .checkRow {
   display: flex;
   flex-wrap: wrap;
@@ -239,6 +251,10 @@ textarea {
 .textarea {
   min-height: 90px;
   resize: vertical;
+}
+
+.textareaCompact {
+  min-height: 74px;
 }
 
 .input::placeholder,

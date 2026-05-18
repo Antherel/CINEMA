@@ -4,6 +4,16 @@ import React, {useEffect, useState} from 'react';
 import {useAuth} from '@/app/lib/AuthProvider';
 import ReferenceManager, {type Reference} from '@/components/ReferenceManager';
 import ReferencePicker from '@/components/ReferencePicker';
+import {
+  EMPTY_STRUCTURED_PROMPT_FIELDS,
+  LIGHTING_OPTIONS,
+  MOOD_OPTIONS,
+  SHOT_TYPE_OPTIONS,
+  VISUAL_STYLE_OPTIONS,
+  composeGeneralPrompt,
+  hasStructuredPromptContent,
+  type StructuredPromptFields,
+} from '@/lib/promptDirection';
 
 const ASPECT_RATIO_OPTIONS = ['1:1', '16:9', '9:16', '4:3', '3:4'];
 const IMAGE_SIZE_OPTIONS = ['1K', '2K'];
@@ -48,6 +58,7 @@ export default function CreateImagePage() {
   const [generatedImage, setGeneratedImage] = useState<GeneratedImage | null>(null);
   const [pricing, setPricing] = useState<PricingSummary | null>(null);
   const [generalPrompt, setGeneralPrompt] = useState('');
+  const [structuredPromptFields, setStructuredPromptFields] = useState<StructuredPromptFields>(EMPTY_STRUCTURED_PROMPT_FIELDS);
   const [whiteBackground, setWhiteBackground] = useState(false);
   const [realistic, setRealistic] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('1:1');
@@ -137,6 +148,13 @@ export default function CreateImagePage() {
     setReferences(references.map((r) => (r.id === id ? {...r, description} : r)));
   };
 
+  const handleStructuredFieldChange = (field: keyof StructuredPromptFields, value: string) => {
+    setStructuredPromptFields((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
   const handleShowPreview = () => {
     if (!projectName.trim()) {
       setError('Por favor ingresa un nombre de proyecto.');
@@ -145,7 +163,8 @@ export default function CreateImagePage() {
     const modifiers: string[] = [];
     if (whiteBackground) modifiers.push('Fondo blanco puro, sin sombras ni gradientes.');
     if (realistic) modifiers.push('Estilo fotorrealista, máximo detalle y realismo.');
-    const segments = [generalPrompt.trim(), ...modifiers, prompt.trim()].filter(Boolean);
+    const composedGeneralPrompt = composeGeneralPrompt(generalPrompt, structuredPromptFields);
+    const segments = [composedGeneralPrompt, ...modifiers, prompt.trim()].filter(Boolean);
     const base = segments.length > 0 ? segments.join('\n\n') : 'Crea una variacion visual coherente para Imagen.';
     const selectedRefs = selectedReferences.map((id) => references.find((r) => r.id === id)).filter(Boolean) as typeof references;
     let preview = base;
@@ -164,7 +183,9 @@ export default function CreateImagePage() {
       return;
     }
 
-    if (!prompt.trim()) {
+    const composedGeneralPrompt = composeGeneralPrompt(generalPrompt, structuredPromptFields);
+
+    if (!prompt.trim() && !composedGeneralPrompt.trim() && !hasStructuredPromptContent(structuredPromptFields)) {
       setError('Por favor ingresa un prompt.');
       return;
     }
@@ -183,7 +204,7 @@ export default function CreateImagePage() {
       formData.append('prompts', JSON.stringify([
         {id: 'a', label: 'Imagen', prompt: prompt.trim()},
       ]));
-      formData.append('generalPrompt', generalPrompt.trim());
+      formData.append('generalPrompt', composedGeneralPrompt);
       formData.append('aspectRatio', aspectRatio);
       formData.append('imageSize', imageSize);
       if (whiteBackground) formData.append('whiteBackground', '1');
@@ -280,6 +301,132 @@ export default function CreateImagePage() {
                 onChange={(e) => setProjectName(e.target.value)}
                 placeholder="mi-proyecto"
               />
+            </div>
+
+            <div className="field">
+              <div className="formSectionTitle">Direccion principal</div>
+              <div className="formSectionHint">Estos campos convierten tu idea en un prompt base mas consistente.</div>
+            </div>
+
+            <div className="fieldRow">
+              <div className="field">
+                <label htmlFor="subject">Sujeto principal</label>
+                <input
+                  id="subject"
+                  className="input"
+                  value={structuredPromptFields.subject}
+                  onChange={(e) => handleStructuredFieldChange('subject', e.target.value)}
+                  placeholder="Ej.: botella de perfume de vidrio esmerilado con tapon dorado"
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="pose-action">Accion o pose</label>
+                <input
+                  id="pose-action"
+                  className="input"
+                  value={structuredPromptFields.poseAction}
+                  onChange={(e) => handleStructuredFieldChange('poseAction', e.target.value)}
+                  placeholder="Ej.: apoyada sobre marmol y girada 30 grados"
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="shot-type">Plano / encuadre</label>
+                <select
+                  id="shot-type"
+                  className="select"
+                  value={structuredPromptFields.shotType}
+                  onChange={(e) => handleStructuredFieldChange('shotType', e.target.value)}
+                >
+                  <option value="">Selecciona un plano</option>
+                  {SHOT_TYPE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="fieldRow">
+              <div className="field">
+                <label htmlFor="visual-style">Estilo visual</label>
+                <select
+                  id="visual-style"
+                  className="select"
+                  value={structuredPromptFields.visualStyle}
+                  onChange={(e) => handleStructuredFieldChange('visualStyle', e.target.value)}
+                >
+                  <option value="">Selecciona un estilo</option>
+                  {VISUAL_STYLE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label htmlFor="lighting">Iluminacion</label>
+                <select
+                  id="lighting"
+                  className="select"
+                  value={structuredPromptFields.lighting}
+                  onChange={(e) => handleStructuredFieldChange('lighting', e.target.value)}
+                >
+                  <option value="">Selecciona una iluminacion</option>
+                  {LIGHTING_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label htmlFor="mood">Mood / tono</label>
+                <select
+                  id="mood"
+                  className="select"
+                  value={structuredPromptFields.mood}
+                  onChange={(e) => handleStructuredFieldChange('mood', e.target.value)}
+                >
+                  <option value="">Selecciona un tono</option>
+                  {MOOD_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="field">
+              <label htmlFor="environment">Entorno o fondo</label>
+              <input
+                id="environment"
+                className="input"
+                value={structuredPromptFields.environment}
+                onChange={(e) => handleStructuredFieldChange('environment', e.target.value)}
+                placeholder="Ej.: fondo blanco puro, salon moderno desenfocado, set industrial oscuro"
+              />
+            </div>
+
+            <div className="fieldRow">
+              <div className="field">
+                <label htmlFor="required-details">Detalles obligatorios</label>
+                <textarea
+                  id="required-details"
+                  className="textarea textareaCompact"
+                  value={structuredPromptFields.requiredDetails}
+                  onChange={(e) => handleStructuredFieldChange('requiredDetails', e.target.value)}
+                  placeholder="Ej.: logo visible, etiqueta centrada, acabado metalico intacto"
+                />
+              </div>
+
+              <div className="field fieldSpanTwo">
+                <label htmlFor="avoid-elements">Elementos a evitar</label>
+                <textarea
+                  id="avoid-elements"
+                  className="textarea textareaCompact"
+                  value={structuredPromptFields.avoidElements}
+                  onChange={(e) => handleStructuredFieldChange('avoidElements', e.target.value)}
+                  placeholder="Ej.: sin texto extra, sin reflejos quemados, sin objetos flotantes"
+                />
+              </div>
             </div>
 
             <div className="field">

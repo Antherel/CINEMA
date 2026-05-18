@@ -4,6 +4,15 @@ import React, {useEffect, useState} from 'react';
 import {useAuth} from '@/app/lib/AuthProvider';
 import ReferenceManager, {type Reference} from '@/components/ReferenceManager';
 import ReferencePicker from '@/components/ReferencePicker';
+import {
+  EMPTY_STRUCTURED_PROMPT_FIELDS,
+  LIGHTING_OPTIONS,
+  MOOD_OPTIONS,
+  SHOT_TYPE_OPTIONS,
+  VISUAL_STYLE_OPTIONS,
+  composeGeneralPrompt,
+  type StructuredPromptFields,
+} from '@/lib/promptDirection';
 
 const MIN_BATCH_IMAGES = 1;
 const MAX_BATCH_IMAGES = 10;
@@ -70,6 +79,7 @@ export default function CreateBatchPage() {
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [pricing, setPricing] = useState<PricingSummary | null>(null);
   const [generalPrompt, setGeneralPrompt] = useState('');
+  const [structuredPromptFields, setStructuredPromptFields] = useState<StructuredPromptFields>(EMPTY_STRUCTURED_PROMPT_FIELDS);
   const [whiteBackground, setWhiteBackground] = useState(false);
   const [realistic, setRealistic] = useState(false);
   const [aspectRatio, setAspectRatio] = useState('1:1');
@@ -186,6 +196,13 @@ export default function CreateBatchPage() {
     setReferences(references.map((r) => (r.id === id ? {...r, description} : r)));
   };
 
+  const handleStructuredFieldChange = (field: keyof StructuredPromptFields, value: string) => {
+    setStructuredPromptFields((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
   const handleRefSelectionChange = (promptId: string, selectedIds: string[]) => {
     setSelectedReferencesPerImage((prev) => ({
       ...prev,
@@ -215,8 +232,9 @@ export default function CreateBatchPage() {
     const modifiers: string[] = [];
     if (whiteBackground) modifiers.push('Fondo blanco puro, sin sombras ni gradientes.');
     if (realistic) modifiers.push('Estilo fotorrealista, máximo detalle y realismo.');
+    const composedGeneralPrompt = composeGeneralPrompt(generalPrompt, structuredPromptFields);
     const preview = prompts.map((p) => {
-      const segments = [generalPrompt.trim(), ...modifiers, p.prompt.trim()].filter(Boolean);
+      const segments = [composedGeneralPrompt, ...modifiers, p.prompt.trim()].filter(Boolean);
       const base = segments.length > 0 ? segments.join('\n\n') : `Crea una variacion visual coherente para ${p.label}.`;
       const refIds = selectedReferencesPerImage[p.id] ?? [];
       const selectedRefs = refIds.map((id) => references.find((r) => r.id === id)).filter(Boolean) as typeof references;
@@ -243,11 +261,12 @@ export default function CreateBatchPage() {
     setPromptPreview(null);
 
     try {
+      const composedGeneralPrompt = composeGeneralPrompt(generalPrompt, structuredPromptFields);
       const formData = new FormData();
       formData.append('projectName', projectName.trim());
       formData.append('imageCount', String(imageCount));
       formData.append('prompts', JSON.stringify(prompts));
-      formData.append('generalPrompt', generalPrompt.trim());
+      formData.append('generalPrompt', composedGeneralPrompt);
       formData.append('aspectRatio', aspectRatio);
       formData.append('imageSize', imageSize);
       if (whiteBackground) formData.append('whiteBackground', '1');
@@ -363,6 +382,132 @@ export default function CreateBatchPage() {
           </div>
 
           <div className="form">
+            <div className="field">
+              <div className="formSectionTitle">Direccion principal</div>
+              <div className="formSectionHint">Campos estructurados para definir mejor el look comun del lote.</div>
+            </div>
+
+            <div className="fieldRow">
+              <div className="field">
+                <label htmlFor="batch-subject">Sujeto principal</label>
+                <input
+                  id="batch-subject"
+                  className="input"
+                  value={structuredPromptFields.subject}
+                  onChange={(e) => handleStructuredFieldChange('subject', e.target.value)}
+                  placeholder="Ej.: coleccion de cartas medievales envejecidas"
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="batch-pose-action">Accion o pose</label>
+                <input
+                  id="batch-pose-action"
+                  className="input"
+                  value={structuredPromptFields.poseAction}
+                  onChange={(e) => handleStructuredFieldChange('poseAction', e.target.value)}
+                  placeholder="Ej.: desplegadas sobre mesa con ligera perspectiva"
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="batch-shot-type">Plano / encuadre</label>
+                <select
+                  id="batch-shot-type"
+                  className="select"
+                  value={structuredPromptFields.shotType}
+                  onChange={(e) => handleStructuredFieldChange('shotType', e.target.value)}
+                >
+                  <option value="">Selecciona un plano</option>
+                  {SHOT_TYPE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="fieldRow">
+              <div className="field">
+                <label htmlFor="batch-visual-style">Estilo visual</label>
+                <select
+                  id="batch-visual-style"
+                  className="select"
+                  value={structuredPromptFields.visualStyle}
+                  onChange={(e) => handleStructuredFieldChange('visualStyle', e.target.value)}
+                >
+                  <option value="">Selecciona un estilo</option>
+                  {VISUAL_STYLE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label htmlFor="batch-lighting">Iluminacion</label>
+                <select
+                  id="batch-lighting"
+                  className="select"
+                  value={structuredPromptFields.lighting}
+                  onChange={(e) => handleStructuredFieldChange('lighting', e.target.value)}
+                >
+                  <option value="">Selecciona una iluminacion</option>
+                  {LIGHTING_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label htmlFor="batch-mood">Mood / tono</label>
+                <select
+                  id="batch-mood"
+                  className="select"
+                  value={structuredPromptFields.mood}
+                  onChange={(e) => handleStructuredFieldChange('mood', e.target.value)}
+                >
+                  <option value="">Selecciona un tono</option>
+                  {MOOD_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="field">
+              <label htmlFor="batch-environment">Entorno o fondo</label>
+              <input
+                id="batch-environment"
+                className="input"
+                value={structuredPromptFields.environment}
+                onChange={(e) => handleStructuredFieldChange('environment', e.target.value)}
+                placeholder="Ej.: fondo blanco puro, ambiente editorial limpio, set oscuro texturizado"
+              />
+            </div>
+
+            <div className="fieldRow">
+              <div className="field">
+                <label htmlFor="batch-required-details">Detalles obligatorios</label>
+                <textarea
+                  id="batch-required-details"
+                  className="textarea textareaCompact"
+                  value={structuredPromptFields.requiredDetails}
+                  onChange={(e) => handleStructuredFieldChange('requiredDetails', e.target.value)}
+                  placeholder="Ej.: mantener bordes envejecidos, simbolos visibles, acabado premium"
+                />
+              </div>
+
+              <div className="field fieldSpanTwo">
+                <label htmlFor="batch-avoid-elements">Elementos a evitar</label>
+                <textarea
+                  id="batch-avoid-elements"
+                  className="textarea textareaCompact"
+                  value={structuredPromptFields.avoidElements}
+                  onChange={(e) => handleStructuredFieldChange('avoidElements', e.target.value)}
+                  placeholder="Ej.: sin tipografias extra, sin deformaciones, sin fondos grises"
+                />
+              </div>
+            </div>
+
             <div className="field">
               <label htmlFor="general-prompt">Prompt genérico (se aplica a todas las imágenes)</label>
               <textarea
